@@ -446,17 +446,24 @@ class TelemetryService extends ChangeNotifier {
     final netTxMbps = uploadBytesSec * 8 / (1024 * 1024);
 
     // Update current snapshot map
+    final dockerCpu = primaryNode.totalDockerCpuPercent;
+    final dockerMem = primaryNode.totalDockerMemPercent;
     primaryNode.current[MetricKey.cpu] = cpu;
     primaryNode.current[MetricKey.cpuTemp] = 40.0 + cpu * 0.45;
     primaryNode.current[MetricKey.memory] = memPercent;
     primaryNode.current[MetricKey.swap] = swapPercent;
     primaryNode.current[MetricKey.netRx] = netRxMbps;
     primaryNode.current[MetricKey.netTx] = netTxMbps;
+    primaryNode.current[MetricKey.dockerCpu] = dockerCpu;
+    primaryNode.current[MetricKey.dockerMem] = dockerMem;
 
     // Push into rolling live buffers
     void pushLive(MetricKey key, double val) {
       final buf = primaryNode.live[key];
       if (buf != null) {
+        if (buf.isEmpty) {
+          buf.add(TimedSample(now.subtract(const Duration(seconds: 2)), val));
+        }
         buf.add(TimedSample(now, val));
         if (buf.length > TimeRange.live.points) buf.removeAt(0);
       }
@@ -468,6 +475,8 @@ class TelemetryService extends ChangeNotifier {
     pushLive(MetricKey.swap, swapPercent);
     pushLive(MetricKey.netRx, netRxMbps);
     pushLive(MetricKey.netTx, netTxMbps);
+    pushLive(MetricKey.dockerCpu, dockerCpu);
+    pushLive(MetricKey.dockerMem, dockerMem);
 
     // Update per-core loads from `cpu_cores_percent` and resize if needed
     final cores = json['cpu_cores_percent'] as List<dynamic>?;
@@ -593,6 +602,9 @@ class TelemetryService extends ChangeNotifier {
 
     void pushDocker(MetricKey key, double val) {
       final buf = node.live[key] ??= [];
+      if (buf.isEmpty) {
+        buf.add(TimedSample(now.subtract(const Duration(seconds: 2)), val));
+      }
       buf.add(TimedSample(now, val));
       if (buf.length > TimeRange.live.points) buf.removeAt(0);
     }

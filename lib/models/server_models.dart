@@ -515,6 +515,8 @@ class ContainerInfo {
   final double memLimitMb;
   double cpuPercent;
   double memMb;
+  final double memPercent;
+  final String memUsageFormatted;
 
   ContainerInfo({
     required this.name,
@@ -528,6 +530,8 @@ class ContainerInfo {
     required this.memLimitMb,
     required this.cpuPercent,
     required this.memMb,
+    this.memPercent = 0.0,
+    this.memUsageFormatted = '',
     this.id = '',
   });
 
@@ -547,13 +551,33 @@ class ContainerInfo {
         ? imageId.substring(7, 19)
         : (imageId.length > 12 ? imageId.substring(0, 12) : imageId);
 
-    // RAM usage & limit in MB from new response format
-    final memUsageBytes = (json['mem_usage'] as num?)?.toDouble() ?? 0.0;
-    final memLimitBytes = (json['mem_limit'] as num?)?.toDouble() ?? 0.0;
-    final memMb = memUsageBytes > 0 ? (memUsageBytes / (1024 * 1024)) : (isRun ? 48.0 : 0.0);
-    final memLimitMb = memLimitBytes > 0 ? (memLimitBytes / (1024 * 1024)) : 1024.0;
-    final cpuPercent = (json['cpu_percent'] as num?)?.toDouble() ?? (isRun ? 1.5 : 0.0);
-    final memFormatted = (json['mem_usage_formatted'] as String?) ?? '';
+    // RAM usage & limit in MB from response format
+    final directMemMb = (json['mem_mb'] as num?)?.toDouble();
+    final memUsageBytes = (json['mem_usage'] as num?)?.toDouble() ??
+        (json['memory_usage'] as num?)?.toDouble() ??
+        (json['mem_bytes'] as num?)?.toDouble() ??
+        0.0;
+    final memMb = directMemMb ?? (memUsageBytes > 0 ? (memUsageBytes / (1024 * 1024)) : 0.0);
+
+    final directMemLimitMb = (json['mem_limit_mb'] as num?)?.toDouble();
+    final memLimitBytes = (json['mem_limit'] as num?)?.toDouble() ??
+        (json['memory_limit'] as num?)?.toDouble() ??
+        0.0;
+    final memLimitMb = directMemLimitMb ?? (memLimitBytes > 0 ? (memLimitBytes / (1024 * 1024)) : 0.0);
+
+    final directMemPercent = (json['mem_percent'] as num?)?.toDouble() ??
+        (json['memory_percent'] as num?)?.toDouble();
+    final memPercent = directMemPercent ??
+        (memLimitMb > 0 ? (memMb / memLimitMb * 100).clamp(0.0, 100.0) : 0.0);
+
+    final cpuPercent = (json['cpu_percent'] as num?)?.toDouble() ??
+        (json['cpu_usage'] as num?)?.toDouble() ??
+        0.0;
+
+    final memFormatted = (json['mem_usage_formatted'] as String?) ??
+        (json['mem_formatted'] as String?) ??
+        (json['memory_formatted'] as String?) ??
+        '';
 
     return ContainerInfo(
       id: id,
@@ -568,6 +592,8 @@ class ContainerInfo {
       memLimitMb: memLimitMb,
       cpuPercent: cpuPercent,
       memMb: memMb,
+      memPercent: memPercent,
+      memUsageFormatted: memFormatted,
     );
   }
 }
@@ -770,9 +796,17 @@ class ServerNode {
       containers.where((c) => c.isRunning).fold(0.0, (sum, c) => sum + c.memMb);
   double get totalDockerCpuPercent =>
       containers.where((c) => c.isRunning).fold(0.0, (sum, c) => sum + c.cpuPercent);
-  double get totalDockerMemPercent => ramTotalGb > 0
-      ? (totalDockerMemUsageMb / (ramTotalGb * 1024) * 100).clamp(0.0, 100.0)
-      : 0.0;
+  double get totalDockerMemPercent {
+    final running = containers.where((c) => c.isRunning);
+    if (running.isEmpty) return 0.0;
+    final sumPct = running.fold<double>(0.0, (sum, c) {
+      if (c.memPercent > 0) return sum + c.memPercent;
+      if (c.memLimitMb > 0) return sum + (c.memMb / c.memLimitMb * 100);
+      if (ramTotalGb > 0) return sum + (c.memMb / (ramTotalGb * 1024) * 100);
+      return sum;
+    });
+    return sumPct.clamp(0.0, 100.0);
+  }
 
   String get uptimeLabel {
     final d = uptime.inDays;

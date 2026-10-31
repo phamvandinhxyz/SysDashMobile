@@ -516,8 +516,23 @@ class _MiniBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 10, fontWeight: FontWeight.w600)),
-            Text('${validPct.round()}%', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: SysDashColors.textSecondary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '${validPct >= 10 ? validPct.round() : validPct.toStringAsFixed(1)}%',
+              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -1367,7 +1382,16 @@ class _ContainerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = c.isRunning ? SysDashColors.statusEmerald : SysDashColors.textSecondary;
-    final memPct = c.memLimitMb == 0 ? 0.0 : c.memMb / c.memLimitMb * 100;
+    final effectiveMemPct = c.memPercent > 0
+        ? c.memPercent
+        : (c.memLimitMb > 0 ? (c.memMb / c.memLimitMb * 100).clamp(0.0, 100.0) : 0.0);
+    final ramLabel = c.memUsageFormatted.isNotEmpty
+        ? 'RAM ${c.memUsageFormatted}'
+        : (c.memMb > 0 ? 'RAM ${formatMb(c.memMb)}' : 'RAM 0 MB');
+    final cpuLabel = c.cpuPercent > 0
+        ? 'CPU ${c.cpuPercent.toStringAsFixed(2)}%'
+        : 'CPU 0%';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1391,9 +1415,9 @@ class _ContainerRow extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _MiniBar(label: 'CPU', percent: c.cpuPercent, color: SysDashColors.cpuCyan)),
+              Expanded(child: _MiniBar(label: cpuLabel, percent: c.cpuPercent, color: SysDashColors.cpuCyan)),
               const SizedBox(width: 12),
-              Expanded(child: _MiniBar(label: 'RAM ${formatMb(c.memMb)}', percent: memPct, color: SysDashColors.ramViolet)),
+              Expanded(child: _MiniBar(label: ramLabel, percent: effectiveMemPct, color: SysDashColors.ramViolet)),
             ],
           ),
         ],
@@ -1401,7 +1425,6 @@ class _ContainerRow extends StatelessWidget {
         Text(
           [
             if (c.imageId.isNotEmpty) c.imageId,
-            if (c.imageSize.isNotEmpty && c.imageSize != 'Image') c.imageSize,
             if (c.ports.isNotEmpty && c.ports != '—') 'ports ${c.ports}',
             if (c.uptime.isNotEmpty) '↑ ${c.uptime}',
           ].join(' • '),
