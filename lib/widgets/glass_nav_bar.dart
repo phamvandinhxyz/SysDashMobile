@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -51,6 +52,8 @@ class GlassNavBar extends StatefulWidget {
 class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStateMixin {
   bool _isDragging = false;
   bool _isFlinging = false;
+  bool _pointerIsDown = false;
+  Timer? _holdTimer;
   double? _dragFraction;
   double _dragOffset = 0.0;
   int? _lastHapticIndex;
@@ -58,7 +61,6 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
   bool _hasBounced = false;
 
   Offset _pointerDownPosition = Offset.zero;
-  DateTime _pointerDownTime = DateTime.fromMillisecondsSinceEpoch(0);
   bool _pointerHasMoved = false;
   VelocityTracker? _velocityTracker;
 
@@ -90,6 +92,7 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    _holdTimer?.cancel();
     _flingController.dispose();
     widget.pageController?.removeListener(_onPageScroll);
     super.dispose();
@@ -127,12 +130,25 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
       _lastHapticIndex = null;
       _bounceImpactProgress = null;
       _hasBounced = false;
-      HapticFeedback.lightImpact();
-      setState(() {
-        _isFlinging = false;
-        _dragFraction = null;
-      });
-      widget.onTap(target);
+
+      if (_pointerIsDown) {
+        // Finger is still held down on this tab:
+        // Latch the capsule into active liquid dragging mode right under the user's finger!
+        HapticFeedback.lightImpact();
+        setState(() {
+          _isFlinging = false;
+          _isDragging = true;
+          _dragFraction = target.toDouble();
+          _dragOffset = 0.0;
+        });
+      } else {
+        HapticFeedback.lightImpact();
+        setState(() {
+          _isFlinging = false;
+          _dragFraction = null;
+        });
+        widget.onTap(target);
+      }
     }
   }
 
@@ -171,10 +187,11 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
   }
 
   void _onPointerDown(PointerDownEvent event, double itemWidth) {
+    _pointerIsDown = true;
+    _holdTimer?.cancel();
     _velocityTracker = VelocityTracker.withKind(event.kind);
     _velocityTracker?.addPosition(event.timeStamp, event.position);
     _pointerDownPosition = event.localPosition;
-    _pointerDownTime = DateTime.now();
     _pointerHasMoved = false;
 
     if (_isFlinging) {
@@ -183,52 +200,88 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
     }
 
     final currentFraction = _getEffectiveFraction();
-    final touchFraction = ((event.localPosition.dx - _horizontalPadding) / itemWidth)
-        .clamp(0.0, (widget.items.length - 1).toDouble());
+    final activeIndex = currentFraction.round().clamp(0, widget.items.length - 1);
 
-    // Instant zero-delay capsule lock-on: if touching on or near the capsule (within 0.95 tabs),
-    // immediately latch and activate liquid expansion with 0ms delay!
-    if ((touchFraction - currentFraction).abs() < 0.95) {
-      _isDragging = true;
-      _dragFraction = currentFraction;
-      _dragOffset = touchFraction - currentFraction;
-      final hoveredIndex = currentFraction.round().clamp(0, widget.items.length - 1);
-      _lastHapticIndex = hoveredIndex;
-      HapticFeedback.lightImpact();
-      setState(() {});
-    } else {
-      _dragOffset = 0.0;
-    }
+    // Exact tab index calculated directly from local coordinate space (Listener is inside the padding)
+    final double rawFraction = event.localPosition.dx / itemWidth;
+    final int touchedIndex = rawFraction.floor().clamp(0, widget.items.length - 1);
+
+    // 200 ms recognition timer: recognize capsule hold/drag after holding for 200 ms!
+    _holdTimer = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted || !_pointerIsDown || _pointerHasMoved) return;
+
+      if (touchedIndex == activeIndex) {
+        // Holding inside active tab's slot for 200 ms:
+        // Recognize capsule hold and expand into liquid dragging mode!
+        _isDragging = true;
+        _dragFraction = currentFraction;
+        _dragOffset = rawFraction - currentFraction;
+        _lastHapticIndex = activeIndex;
+        HapticFeedback.lightImpact();
+        setState(() {});
+      } else {
+        // Holding a different tab for 200 ms:
+        // Recognize, activate and glide smoothly to the touched tab!
+        _lastHapticIndex = touchedIndex;
+        HapticFeedback.lightImpact();
+
+        final distance = (touchedIndex - currentFraction).abs();
+        final durationMs = (150 + distance * 35).clamp(180.0, 280.0).toInt();
+        _flingController.duration = Duration(milliseconds: durationMs);
+        _bounceImpactProgress = null;
+        _hasBounced = false;
+
+        _flingAnimation = Tween<double>(
+          begin: currentFraction,
+          end: touchedIndex.toDouble(),
+        ).animate(CurvedAnimation(
+          parent: _flingController,
+          curve: Curves.easeOutCubic,
+        ));
+
+        _isDragging = false;
+        _isFlinging = true;
+        _dragOffset = 0.0;
+        setState(() {});
+        _flingController.forward(from: 0.0);
+      }
+    });
   }
 
   void _onPointerMove(PointerMoveEvent event, double itemWidth) {
     _velocityTracker?.addPosition(event.timeStamp, event.position);
 
-    final touchFraction = (event.localPosition.dx - _horizontalPadding) / itemWidth;
+    final rawFraction = event.localPosition.dx / itemWidth;
 
     final moveDist = (event.localPosition - _pointerDownPosition).distance;
     if (moveDist > 3.0) {
       _pointerHasMoved = true;
+      _holdTimer?.cancel();
+
+      if (_isFlinging) {
+        _flingController.stop();
+        _isFlinging = false;
+      }
       if (!_isDragging) {
         _isDragging = true;
         _dragOffset = 0.0;
-        final hoveredIndex = touchFraction.round().clamp(0, widget.items.length - 1);
+        final hoveredIndex = rawFraction.floor().clamp(0, widget.items.length - 1);
         _lastHapticIndex = hoveredIndex;
         HapticFeedback.lightImpact();
       }
     }
 
     if (_isDragging) {
-      final rawFraction = touchFraction - _dragOffset;
+      final unclamped = rawFraction - _dragOffset;
       final maxIdx = (widget.items.length - 1).toDouble();
       // Elastic rubber-band resistance when dragging past boundaries
       double newFraction;
-      if (rawFraction < 0.0) {
-        newFraction = rawFraction * 0.28;
-      } else if (rawFraction > maxIdx) {
-        newFraction = maxIdx + (rawFraction - maxIdx) * 0.28;
+      if (unclamped < 0.0) {
+        newFraction = unclamped * 0.28;
+      } else if (unclamped > maxIdx) {
+        newFraction = maxIdx + (unclamped - maxIdx) * 0.28;
       } else {
-        newFraction = rawFraction;
+        newFraction = unclamped;
       }
       _checkHapticHover(newFraction);
       setState(() {
@@ -238,18 +291,23 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
   }
 
   void _onPointerUp(PointerUpEvent event, double itemWidth) {
+    _pointerIsDown = false;
+    _holdTimer?.cancel();
     _velocityTracker?.addPosition(event.timeStamp, event.position);
     final estimate = _velocityTracker?.getVelocityEstimate();
     final velocity = estimate?.pixelsPerSecond.dx ?? 0.0;
-    final duration = DateTime.now().difference(_pointerDownTime);
     final totalDist = (event.localPosition - _pointerDownPosition).distance;
 
-    // Pure tap: lifted without substantial drag or flick
-    if (!_pointerHasMoved && totalDist < 12.0 && duration.inMilliseconds < 350 && velocity.abs() < 180.0) {
-      final tappedIndex = ((event.localPosition.dx - _horizontalPadding) / itemWidth)
-          .round()
+    // Pure tap or hold-release without fling:
+    if (!_pointerHasMoved && totalDist < 12.0 && velocity.abs() < 180.0) {
+      final tappedIndex = (event.localPosition.dx / itemWidth)
+          .floor()
           .clamp(0, widget.items.length - 1);
       _lastHapticIndex = null;
+      if (_isFlinging) {
+        // Glide is already in progress towards tappedIndex; let it finish and trigger onTap in _onFlingStatus
+        return;
+      }
       if (_isDragging) {
         setState(() {
           _isDragging = false;
@@ -265,6 +323,8 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
   }
 
   void _onPointerCancel(PointerCancelEvent event, double itemWidth) {
+    _pointerIsDown = false;
+    _holdTimer?.cancel();
     if (_isDragging || _isFlinging) {
       _startFling(0.0, itemWidth);
     }
