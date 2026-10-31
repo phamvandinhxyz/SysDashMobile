@@ -24,10 +24,27 @@ String formatMetric(double v, String unit, {bool compact = false}) {
   switch (unit) {
     case 'Mbps':
       if (v >= 1000) return '${(v / 1000).toStringAsFixed(compact ? 1 : 2)} Gbps';
-      return '${v.toStringAsFixed(compact || v >= 100 ? 0 : 1)} Mbps';
+      if (v >= 100) return '${v.toStringAsFixed(0)} Mbps';
+      if (v >= 10) return '${v.toStringAsFixed(compact ? 0 : 1)} Mbps';
+      if (v >= 1) return '${v.toStringAsFixed(compact ? 1 : 2)} Mbps';
+      if (v > 0) {
+        final kbps = v * 1000;
+        if (kbps >= 100) return '${kbps.toStringAsFixed(compact ? 0 : 1)} Kbps';
+        if (kbps >= 10) return '${kbps.toStringAsFixed(compact ? 0 : 1)} Kbps';
+        if (kbps >= 1) return '${kbps.toStringAsFixed(compact ? 1 : 2)} Kbps';
+        return '${kbps.toStringAsFixed(compact ? 1 : 2)} Kbps';
+      }
+      return compact ? '0 Kbps' : '0.0 Kbps';
     case 'MB/s':
       if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)} GB/s';
-      return '${v.toStringAsFixed(compact || v >= 100 ? 0 : 1)} MB/s';
+      if (v >= 100) return '${v.toStringAsFixed(0)} MB/s';
+      if (v >= 0.1) return '${v.toStringAsFixed(compact || v >= 10 ? 0 : 1)} MB/s';
+      if (v > 0) {
+        final kbs = v * 1024;
+        if (kbs >= 100) return '${kbs.toStringAsFixed(0)} KB/s';
+        return '${kbs.toStringAsFixed(compact ? 0 : 1)} KB/s';
+      }
+      return compact ? '0 MB/s' : '0.0 MB/s';
     case '%':
       return '${v.toStringAsFixed(compact || v >= 10 ? 0 : 1)}%';
     case '°C':

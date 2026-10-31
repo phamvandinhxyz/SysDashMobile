@@ -260,8 +260,33 @@ class OverviewTab extends StatelessWidget {
                 _ResourceTile(
                   icon: Icons.swap_vert_rounded,
                   title: s.tabNetwork,
-                  value: formatMetric(node.value(MetricKey.netRx), 'Mbps', compact: true),
-                  subtitle: '↑ ${formatMetric(node.value(MetricKey.netTx), 'Mbps', compact: true)}',
+                  value: '↓ ${formatMetric(node.value(MetricKey.netRx), 'Mbps', compact: true)}  ↑ ${formatMetric(node.value(MetricKey.netTx), 'Mbps', compact: true)}',
+                  valueWidget: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '↓ ${formatMetric(node.value(MetricKey.netRx), 'Mbps', compact: true)}',
+                        style: const TextStyle(
+                          color: SysDashColors.netIndigo,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '↑ ${formatMetric(node.value(MetricKey.netTx), 'Mbps', compact: true)}',
+                        style: const TextStyle(
+                          color: SysDashColors.netTxTeal,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: node.interfaces.isNotEmpty
+                      ? '${node.interfaces.length} ${s.interfaces.toLowerCase()}'
+                      : s.bandwidth,
                   color: SysDashColors.netIndigo,
                   samples: node.live[MetricKey.netRx]!,
                   sparkMax: 600,
@@ -330,6 +355,7 @@ class _ResourceTile extends StatelessWidget {
   final List<TimedSample> samples;
   final double sparkMax;
   final VoidCallback onTap;
+  final Widget? valueWidget;
 
   const _ResourceTile({
     required this.icon,
@@ -340,6 +366,7 @@ class _ResourceTile extends StatelessWidget {
     required this.samples,
     required this.onTap,
     this.sparkMax = 100,
+    this.valueWidget,
   });
 
   @override
@@ -356,12 +383,16 @@ class _ResourceTile extends StatelessWidget {
             IconBadge(icon: icon, color: color, size: 32),
             const Spacer(),
             Flexible(
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800),
-              ),
+              child: valueWidget ??
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                  ),
             ),
           ],
         ),

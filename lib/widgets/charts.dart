@@ -302,7 +302,7 @@ class _TimeSeriesPainter extends CustomPainter {
       canvas.drawLine(Offset(plot.left, y), Offset(plot.right, y), gridPaint);
       _text(
         canvas,
-        formatMetric(yMax * i / 4, unit, compact: true),
+        i == 0 ? '0' : formatMetric(yMax * i / 4, unit, compact: true),
         Offset(plot.left - 6, y),
         align: TextAlign.right,
       );
