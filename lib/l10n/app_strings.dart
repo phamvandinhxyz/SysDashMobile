@@ -56,6 +56,11 @@ class AppStrings {
   String get liveStream => _t('Truyền dữ liệu trực tiếp', 'Live data streaming');
   String get liveStreamDesc => _t('WebSocket thời gian thực (2s)', 'Real-time WebSocket (2s)');
   String get language => _t('Ngôn ngữ', 'Language');
+  String get theme => _t('Giao diện', 'Theme');
+  String get themeDark => _t('Tối', 'Dark');
+  String get themeLight => _t('Sáng', 'Light');
+  String get themeSystem => _t('Hệ thống', 'System');
+  String get themeDesc => _t('Chế độ sáng / tối', 'Light / Dark mode');
   String get now => _t('Hiện tại', 'Now');
   String get avg => _t('TB', 'Avg');
   String get peak => _t('Đỉnh', 'Peak');

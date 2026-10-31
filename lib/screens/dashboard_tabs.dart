@@ -113,7 +113,7 @@ class _HeroCard extends StatelessWidget {
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: SysDashColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -131,7 +131,7 @@ class _HeroCard extends StatelessWidget {
                             k,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 12),
+                            style: TextStyle(color: SysDashColors.textSecondary, fontSize: 12),
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -140,7 +140,7 @@ class _HeroCard extends StatelessWidget {
                             v,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: SysDashColors.textPrimary,
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
@@ -267,7 +267,7 @@ class OverviewTab extends StatelessWidget {
                     children: [
                       Text(
                         '↓ ${formatMetric(node.value(MetricKey.netRx), 'Mbps', compact: true)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: SysDashColors.netIndigo,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w800,
@@ -276,7 +276,7 @@ class OverviewTab extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         '↑ ${formatMetric(node.value(MetricKey.netTx), 'Mbps', compact: true)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: SysDashColors.netTxTeal,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w800,
@@ -305,7 +305,7 @@ class OverviewTab extends StatelessWidget {
           unit: '%',
           fixedMax: 100,
           lines: [
-            const MetricLine(MetricKey.cpu, 'CPU', SysDashColors.cpuCyan),
+            MetricLine(MetricKey.cpu, 'CPU', SysDashColors.cpuCyan),
             MetricLine(MetricKey.memory, 'RAM', SysDashColors.ramViolet),
           ],
         ),
@@ -335,9 +335,9 @@ class _SummaryTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11)),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11)),
               const SizedBox(height: 2),
-              Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SysDashColors.textPrimary, fontSize: 14.5, fontWeight: FontWeight.w800)),
+              Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SysDashColors.textPrimary, fontSize: 14.5, fontWeight: FontWeight.w800)),
             ],
           ),
         ),
@@ -397,8 +397,8 @@ class _ResourceTile extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        Text(title, style: const TextStyle(color: SysDashColors.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w700)),
-        Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5)),
+        Text(title, style: TextStyle(color: SysDashColors.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w700)),
+        Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5)),
         const SizedBox(height: 10),
         SizedBox(height: 38, width: double.infinity, child: Sparkline(samples: samples, color: color, max: sparkMax)),
       ],
@@ -447,7 +447,7 @@ class _NodeCard extends StatelessWidget {
                   node.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: SysDashColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -469,7 +469,7 @@ class _NodeCard extends StatelessWidget {
                 node.sshAddress,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: SysDashColors.cpuCyan,
                   fontSize: 12,
                   fontFamily: 'monospace',
@@ -481,7 +481,7 @@ class _NodeCard extends StatelessWidget {
                 node.osKernel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: SysDashColors.textSecondary,
                   fontSize: 11.5,
                 ),
@@ -491,7 +491,7 @@ class _NodeCard extends StatelessWidget {
                 '${node.cpuModel} • ${node.physicalCores}C/${node.logicalCores}T @ ${node.formattedSpeed}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: SysDashColors.textMuted,
                   fontSize: 11,
                 ),
@@ -552,7 +552,7 @@ class _MiniBar extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: SysDashColors.textSecondary,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
@@ -635,7 +635,7 @@ class CpuTab extends StatelessWidget {
               accent: SysDashColors.cpuCyan,
               unit: '%',
               fixedMax: 100,
-              lines: const [MetricLine(MetricKey.cpu, 'CPU', SysDashColors.cpuCyan)],
+              lines: [MetricLine(MetricKey.cpu, 'CPU', SysDashColors.cpuCyan)],
             ),
             MetricChartCard(
               service: service,
@@ -703,7 +703,7 @@ class CpuTab extends StatelessWidget {
                     ),
                     for (var i = 0; i < displayed.length; i++) ...[
                       if (i > 0)
-                        Divider(height: 18, color: Colors.white.withValues(alpha: 0.08)),
+                        Divider(height: 18, color: SysDashColors.dividerColor),
                       _ProcessRow(proc: displayed[i]),
                     ],
                   ],
@@ -735,12 +735,12 @@ class _ProcessRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.07),
+            color: SysDashColors.isDark ? Colors.white.withValues(alpha: 0.07) : const Color(0x0A0F172A),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
             '${proc.pid}',
-            style: const TextStyle(
+            style: TextStyle(
               color: SysDashColors.textSecondary,
               fontFamily: 'monospace',
               fontSize: 10.5,
@@ -756,7 +756,7 @@ class _ProcessRow extends StatelessWidget {
                 proc.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: SysDashColors.textPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -766,7 +766,7 @@ class _ProcessRow extends StatelessWidget {
                 highlightMemory
                     ? 'CPU: ${proc.cpuPercent.toStringAsFixed(1)}%'
                     : 'RAM: ${formatMb(proc.memoryRss / (1024 * 1024))} (${proc.memoryPercent.toStringAsFixed(1)}%)',
-                style: const TextStyle(
+                style: TextStyle(
                   color: SysDashColors.textSecondary,
                   fontSize: 11,
                 ),
@@ -813,7 +813,7 @@ class _ProcessLimitSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.28),
+        color: SysDashColors.isDark ? Colors.black.withValues(alpha: 0.28) : const Color(0x0F0F172A),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: SysDashColors.glassBorderSubtle),
       ),
@@ -957,8 +957,8 @@ class MemoryTab extends StatelessWidget {
                       children: [
                         Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
                         const SizedBox(width: 6),
-                        Text('$label  ', style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 12)),
-                        Text(formatGb(node.ramTotalGb * pct / 100), style: const TextStyle(color: SysDashColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w700)),
+                        Text('$label  ', style: TextStyle(color: SysDashColors.textSecondary, fontSize: 12)),
+                        Text(formatGb(node.ramTotalGb * pct / 100), style: TextStyle(color: SysDashColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w700)),
                       ],
                     ),
                 ],
@@ -976,7 +976,7 @@ class MemoryTab extends StatelessWidget {
               accent: SysDashColors.ramViolet,
               unit: '%',
               fixedMax: 100,
-              lines: const [MetricLine(MetricKey.memory, 'RAM', SysDashColors.ramViolet)],
+              lines: [MetricLine(MetricKey.memory, 'RAM', SysDashColors.ramViolet)],
             ),
             MetricChartCard(
               service: service,
@@ -986,7 +986,7 @@ class MemoryTab extends StatelessWidget {
               accent: SysDashColors.swapPink,
               unit: '%',
               fixedMax: 100,
-              lines: const [MetricLine(MetricKey.swap, 'Swap', SysDashColors.swapPink)],
+              lines: [MetricLine(MetricKey.swap, 'Swap', SysDashColors.swapPink)],
             ),
           ],
         ),
@@ -1011,7 +1011,7 @@ class MemoryTab extends StatelessWidget {
                     ),
                     for (var i = 0; i < displayed.length; i++) ...[
                       if (i > 0)
-                        Divider(height: 18, color: Colors.white.withValues(alpha: 0.08)),
+                        Divider(height: 18, color: SysDashColors.dividerColor),
                       _ProcessRow(
                         proc: displayed[i],
                         highlightMemory: true,
@@ -1067,14 +1067,14 @@ class DisksTab extends StatelessWidget {
               children: [
                 SectionHeader(title: s.mountPoints, badge: formatGb(node.diskTotalGb), accent: SysDashColors.diskAmber),
                 for (var i = 0; i < node.mounts.length; i++) ...[
-                  if (i > 0) Divider(height: 24, color: Colors.white.withValues(alpha: 0.08)),
+                  if (i > 0) Divider(height: 24, color: SysDashColors.dividerColor),
                   _MountRow(mount: node.mounts[i]),
                 ],
               ],
             ),
           )
         else
-          const SkeletonDiskList(count: 3, accent: SysDashColors.diskAmber),
+          const SkeletonDiskList(count: 3, accent: SysDashColors.defaultDiskAmber),
         ResponsiveGrid(
           children: [
             MetricChartCard(
@@ -1118,10 +1118,10 @@ class _MountRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Icon(Icons.folder_open_rounded, size: 18, color: SysDashColors.diskAmber),
+            Icon(Icons.folder_open_rounded, size: 18, color: SysDashColors.diskAmber),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(mount.mountPoint, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SysDashColors.textPrimary, fontWeight: FontWeight.w700, fontFamily: 'monospace', fontSize: 13)),
+              child: Text(mount.mountPoint, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SysDashColors.textPrimary, fontWeight: FontWeight.w700, fontFamily: 'monospace', fontSize: 13)),
             ),
             Text('${mount.percent.toStringAsFixed(1)}%', style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13)),
           ],
@@ -1135,7 +1135,7 @@ class _MountRow extends StatelessWidget {
               : '${mount.device} • ${mount.fileSystem} • ${formatGb(mount.usedGb)} / ${formatGb(mount.totalGb)}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5),
+          style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5),
         ),
       ],
     );
@@ -1197,14 +1197,14 @@ class NetworkTab extends StatelessWidget {
               children: [
                 SectionHeader(title: s.interfaces, badge: '${node.interfaces.length}', accent: SysDashColors.netIndigo),
                 for (var i = 0; i < node.interfaces.length; i++) ...[
-                  if (i > 0) Divider(height: 24, color: Colors.white.withValues(alpha: 0.08)),
+                  if (i > 0) Divider(height: 24, color: SysDashColors.dividerColor),
                   _InterfaceRow(nic: node.interfaces[i], strings: s),
                 ],
               ],
             ),
           )
         else
-          const SkeletonNetworkList(count: 2, accent: SysDashColors.netIndigo),
+          const SkeletonNetworkList(count: 2, accent: SysDashColors.defaultNetIndigo),
       ],
     );
   }
@@ -1230,7 +1230,7 @@ class _ThroughputTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5)),
+              Text(label, style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5)),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
@@ -1252,22 +1252,22 @@ class _InterfaceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const IconBadge(icon: Icons.settings_ethernet_rounded, color: SysDashColors.netIndigo, size: 36),
+      IconBadge(icon: Icons.settings_ethernet_rounded, color: SysDashColors.netIndigo, size: 36),
       const SizedBox(width: 12),
       Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(nic.name, style: const TextStyle(color: SysDashColors.textPrimary, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
-            Text('${nic.ipv4} • ${nic.mac}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5)),
+            Text(nic.name, style: TextStyle(color: SysDashColors.textPrimary, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+            Text('${nic.ipv4} • ${nic.mac}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5)),
           ],
         ),
       ),
       Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text('↓ ${formatGb(nic.rxTotalGb)}', style: const TextStyle(color: SysDashColors.netIndigo, fontSize: 12, fontWeight: FontWeight.w700)),
-          Text('↑ ${formatGb(nic.txTotalGb)}', style: const TextStyle(color: SysDashColors.netTxTeal, fontSize: 12, fontWeight: FontWeight.w700)),
+          Text('↓ ${formatGb(nic.rxTotalGb)}', style: TextStyle(color: SysDashColors.netIndigo, fontSize: 12, fontWeight: FontWeight.w700)),
+          Text('↑ ${formatGb(nic.txTotalGb)}', style: TextStyle(color: SysDashColors.netTxTeal, fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     ],
@@ -1344,7 +1344,7 @@ class _ContainersTabState extends State<ContainersTab> {
               accent: SysDashColors.cpuCyan,
               unit: '%',
               fixedMax: 100,
-              lines: const [MetricLine(MetricKey.dockerCpu, 'CPU', SysDashColors.cpuCyan)],
+              lines: [MetricLine(MetricKey.dockerCpu, 'CPU', SysDashColors.cpuCyan)],
             ),
             MetricChartCard(
               service: service,
@@ -1354,7 +1354,7 @@ class _ContainersTabState extends State<ContainersTab> {
               accent: SysDashColors.ramViolet,
               unit: '%',
               fixedMax: 100,
-              lines: const [MetricLine(MetricKey.dockerMem, 'RAM', SysDashColors.ramViolet)],
+              lines: [MetricLine(MetricKey.dockerMem, 'RAM', SysDashColors.ramViolet)],
             ),
           ],
         ),
@@ -1368,7 +1368,7 @@ class _ContainersTabState extends State<ContainersTab> {
                 badge: '${node.containers.length}',
                 accent: SysDashColors.netIndigo,
                 trailing: service.isFetchingDocker
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
@@ -1382,12 +1382,12 @@ class _ContainersTabState extends State<ContainersTab> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Center(
-                    child: Text(s.noContainers, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 13)),
+                    child: Text(s.noContainers, style: TextStyle(color: SysDashColors.textSecondary, fontSize: 13)),
                   ),
                 )
               else
                 for (var i = 0; i < node.containers.length; i++) ...[
-                  if (i > 0) Divider(height: 24, color: Colors.white.withValues(alpha: 0.08)),
+                  if (i > 0) Divider(height: 24, color: SysDashColors.dividerColor),
                   _ContainerRow(c: node.containers[i], strings: s),
                 ],
             ],
@@ -1408,7 +1408,7 @@ class _ContainersTabState extends State<ContainersTab> {
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(SysDashColors.diskAmber),
+                          valueColor: AlwaysStoppedAnimation<Color>(SysDashColors.defaultDiskAmber),
                         ),
                       )
                     : null,
@@ -1417,12 +1417,12 @@ class _ContainersTabState extends State<ContainersTab> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Center(
-                    child: Text(s.noImages, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 13)),
+                    child: Text(s.noImages, style: TextStyle(color: SysDashColors.textSecondary, fontSize: 13)),
                   ),
                 )
               else
                 for (var i = 0; i < node.dockerImages.length; i++) ...[
-                  if (i > 0) Divider(height: 24, color: Colors.white.withValues(alpha: 0.08)),
+                  if (i > 0) Divider(height: 24, color: SysDashColors.dividerColor),
                   _DockerImageRow(image: node.dockerImages[i]),
                 ],
             ],
@@ -1441,7 +1441,7 @@ class _DockerImageRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const IconBadge(icon: Icons.layers_rounded, color: SysDashColors.diskAmber, size: 36),
+        IconBadge(icon: Icons.layers_rounded, color: SysDashColors.diskAmber, size: 36),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -1451,7 +1451,7 @@ class _DockerImageRow extends StatelessWidget {
                 image.primaryTag,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: SysDashColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5),
+                style: TextStyle(color: SysDashColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5),
               ),
               const SizedBox(height: 2),
               Text(
@@ -1462,7 +1462,7 @@ class _DockerImageRow extends StatelessWidget {
                 ].join(' • '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11),
+                style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11),
               ),
             ],
           ),
@@ -1497,14 +1497,14 @@ class _ContainerRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            const IconBadge(icon: Icons.view_in_ar_rounded, color: SysDashColors.netIndigo, size: 36),
+            IconBadge(icon: Icons.view_in_ar_rounded, color: SysDashColors.netIndigo, size: 36),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SysDashColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5)),
-                  Text('${c.image}:${c.tag}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SysDashColors.cpuCyan, fontFamily: 'monospace', fontSize: 11.5)),
+                  Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SysDashColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5)),
+                  Text('${c.image}:${c.tag}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SysDashColors.cpuCyan, fontFamily: 'monospace', fontSize: 11.5)),
                 ],
               ),
             ),
@@ -1530,7 +1530,7 @@ class _ContainerRow extends StatelessWidget {
           ].join(' • '),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11),
+          style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11),
         ),
       ],
     );

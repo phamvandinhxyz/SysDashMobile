@@ -189,6 +189,7 @@ class _GlassNavBarState extends State<GlassNavBar> {
     final effectiveFraction = _getEffectiveFraction();
     final activeColor = _calculateLiquidColor(effectiveFraction);
     final activeHoverIndex = effectiveFraction.round().clamp(0, widget.items.length - 1);
+    final isDark = SysDashColors.isDark;
 
     return Semantics(
       container: true,
@@ -208,16 +209,18 @@ class _GlassNavBarState extends State<GlassNavBar> {
                   boxShadow: [
                     // Deep ambient floor shadow
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      blurRadius: 28,
-                      offset: const Offset(0, 12),
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.45)
+                          : const Color(0x180F172A),
+                      blurRadius: isDark ? 28 : 20,
+                      offset: Offset(0, isDark ? 12 : 6),
                     ),
                     // Dynamic liquid colored aura reacting to active position & drag
                     BoxShadow(
-                      color: activeColor.withValues(alpha: _isDragging ? 0.35 : 0.22),
-                      blurRadius: _isDragging ? 30 : 24,
+                      color: activeColor.withValues(alpha: _isDragging ? 0.35 : (isDark ? 0.22 : 0.14)),
+                      blurRadius: _isDragging ? 30 : 20,
                       spreadRadius: _isDragging ? 0 : -2,
-                      offset: const Offset(0, 6),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -237,9 +240,9 @@ class _GlassNavBarState extends State<GlassNavBar> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              const Color(0xEE0B1222),
-                              const Color(0xDD0F172A),
-                              activeColor.withValues(alpha: _isDragging ? 0.12 : 0.06),
+                              isDark ? const Color(0xEE0B1222) : const Color(0xF8FFFFFF),
+                              isDark ? const Color(0xDD0F172A) : const Color(0xEEF8FAFC),
+                              activeColor.withValues(alpha: _isDragging ? 0.12 : (isDark ? 0.06 : 0.04)),
                             ],
                             stops: const [0.0, 0.65, 1.0],
                           ),
@@ -349,6 +352,7 @@ class _LiquidGlidingPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const radius = 18.0;
+    final isDark = SysDashColors.isDark;
 
     return AnimatedScale(
       scale: isDragging ? 1.28 : 1.0,
@@ -363,17 +367,17 @@ class _LiquidGlidingPill extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              accent.withValues(alpha: isDragging ? 0.42 : 0.28),
-              accent.withValues(alpha: isDragging ? 0.22 : 0.12),
+              accent.withValues(alpha: isDragging ? 0.42 : (isDark ? 0.28 : 0.16)),
+              accent.withValues(alpha: isDragging ? 0.22 : (isDark ? 0.12 : 0.08)),
             ],
           ),
           boxShadow: [
             // Inner/outer liquid glow magnified when zoomed
             BoxShadow(
-              color: accent.withValues(alpha: isDragging ? 0.65 : 0.40),
-              blurRadius: isDragging ? 26 : 16,
+              color: accent.withValues(alpha: isDragging ? 0.65 : (isDark ? 0.40 : 0.22)),
+              blurRadius: isDragging ? 26 : 14,
               spreadRadius: isDragging ? 2 : -2,
-              offset: Offset(0, isDragging ? 4 : 3),
+              offset: Offset(0, isDragging ? 4 : 2),
             ),
           ],
         ),
@@ -499,6 +503,7 @@ class _LiquidGlassChassisPainter extends CustomPainter {
       rect.deflate(0.6),
       Radius.circular(radius),
     );
+    final isDark = SysDashColors.isDark;
 
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -508,8 +513,8 @@ class _LiquidGlassChassisPainter extends CustomPainter {
         end: Alignment.bottomRight,
         colors: [
           SysDashColors.glassBorderHighlight,
-          Colors.white.withValues(alpha: 0.12),
-          accent.withValues(alpha: 0.45),
+          isDark ? Colors.white.withValues(alpha: 0.12) : SysDashColors.glassBorderSubtle,
+          accent.withValues(alpha: isDark ? 0.45 : 0.35),
         ],
         stops: const [0.0, 0.5, 1.0],
       ).createShader(rect);

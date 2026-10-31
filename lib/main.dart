@@ -8,12 +8,14 @@ import 'services/api_client.dart';
 import 'services/secure_credential_store.dart';
 import 'services/telemetry_service.dart';
 import 'theme/app_colors.dart';
+import 'theme/theme_controller.dart';
 import 'utils/formatters.dart';
 import 'widgets/app_icon.dart';
 import 'widgets/glass.dart';
 import 'widgets/glass_nav_bar.dart';
 import 'widgets/language_toggle.dart';
 import 'widgets/skeleton.dart';
+import 'widgets/theme_selector.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +49,7 @@ class SysDashApp extends StatefulWidget {
 
 class _SysDashAppState extends State<SysDashApp> {
   final _langController = LanguageController(AppLanguage.vi);
+  late final ThemeController _themeController;
   late final SecureCredentialStore _store;
   late final SshConnector _connector;
 
@@ -57,6 +60,7 @@ class _SysDashAppState extends State<SysDashApp> {
   void initState() {
     super.initState();
     _store = widget.store ?? SecureCredentialStore();
+    _themeController = ThemeController(store: _store);
     _connector = widget.connector ?? const SshConnector();
     if (widget.initialProfile != null) {
       _onConnected(widget.initialProfile!);
@@ -67,6 +71,7 @@ class _SysDashAppState extends State<SysDashApp> {
   void dispose() {
     _telemetry?.dispose();
     _langController.dispose();
+    _themeController.dispose();
     super.dispose();
   }
 
@@ -97,34 +102,51 @@ class _SysDashAppState extends State<SysDashApp> {
 
   @override
   Widget build(BuildContext context) {
-    return LanguageScope(
-      controller: _langController,
-      child: MaterialApp(
-        title: 'SysDash - Server Monitor',
-        debugShowCheckedModeBanner: false,
-        themeMode: ThemeMode.dark,
-        darkTheme: ThemeData(
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: SysDashColors.bgPrimary,
-          colorScheme: const ColorScheme.dark(
-            primary: SysDashColors.cpuCyan,
-            secondary: SysDashColors.ramViolet,
-            surface: SysDashColors.bgSecondary,
-          ),
-          fontFamily: null,
-          useMaterial3: true,
-        ),
-        home: _activeProfile == null || _telemetry == null
-            ? LoginScreen(
-                store: _store,
-                connector: _connector,
-                onConnected: _onConnected,
-              )
-            : DashboardShell(
-                service: _telemetry!,
-                profile: _activeProfile!,
-                onLogout: _onLogout,
+    return ThemeScope(
+      controller: _themeController,
+      child: LanguageScope(
+        controller: _langController,
+        child: AnimatedBuilder(
+          animation: _themeController,
+          builder: (context, _) => MaterialApp(
+            title: 'SysDash - Server Monitor',
+            debugShowCheckedModeBanner: false,
+            themeMode: _themeController.value,
+            theme: ThemeData(
+              brightness: Brightness.light,
+              scaffoldBackgroundColor: SysDashColors.bgPrimary,
+              colorScheme: ColorScheme.light(
+                primary: SysDashColors.cpuCyan,
+                secondary: SysDashColors.ramViolet,
+                surface: const Color(0xFFFFFFFF),
               ),
+              fontFamily: null,
+              useMaterial3: true,
+            ),
+            darkTheme: ThemeData(
+              brightness: Brightness.dark,
+              scaffoldBackgroundColor: SysDashColors.bgPrimary,
+              colorScheme: ColorScheme.dark(
+                primary: SysDashColors.cpuCyan,
+                secondary: SysDashColors.ramViolet,
+                surface: SysDashColors.bgSecondary,
+              ),
+              fontFamily: null,
+              useMaterial3: true,
+            ),
+            home: _activeProfile == null || _telemetry == null
+                ? LoginScreen(
+                    store: _store,
+                    connector: _connector,
+                    onConnected: _onConnected,
+                  )
+                : DashboardShell(
+                    service: _telemetry!,
+                    profile: _activeProfile!,
+                    onLogout: _onLogout,
+                  ),
+          ),
+        ),
       ),
     );
   }
@@ -205,7 +227,7 @@ class _DashboardShellState extends State<DashboardShell> {
             label: s.tabOverview,
             accent: SysDashColors.statusEmerald,
           ),
-          const GlassNavItem(
+          GlassNavItem(
             icon: Icons.memory_outlined,
             activeIcon: Icons.memory_rounded,
             label: 'CPU',
@@ -229,7 +251,7 @@ class _DashboardShellState extends State<DashboardShell> {
             label: s.tabNetwork,
             accent: SysDashColors.netIndigo,
           ),
-          const GlassNavItem(
+          GlassNavItem(
             icon: Icons.layers_outlined,
             activeIcon: Icons.layers_rounded,
             label: 'Docker',
@@ -252,11 +274,11 @@ class _DashboardShellState extends State<DashboardShell> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Row(
+                          Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              SysDashAppIcon(size: 20, borderRadius: 5),
-                              SizedBox(width: 8),
+                              const SysDashAppIcon(size: 20, borderRadius: 5),
+                              const SizedBox(width: 8),
                               Text(
                                 'SysDash',
                                 style: TextStyle(
@@ -402,7 +424,7 @@ class _ServerDynamicPill extends StatelessWidget {
                 duration: const Duration(milliseconds: 250),
                 padding: const EdgeInsets.fromLTRB(10, 5, 8, 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: SysDashColors.isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
                   borderRadius: BorderRadius.circular(99),
                   border: Border.all(
                     color: statusColor.withValues(alpha: 0.45),
@@ -410,9 +432,12 @@ class _ServerDynamicPill extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: statusColor.withValues(alpha: 0.20),
+                      color: SysDashColors.isDark
+                          ? statusColor.withValues(alpha: 0.20)
+                          : const Color(0x140F172A),
                       blurRadius: 10,
                       spreadRadius: -1,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -442,7 +467,7 @@ class _ServerDynamicPill extends StatelessWidget {
                         activeNode.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: SysDashColors.textPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -453,7 +478,7 @@ class _ServerDynamicPill extends StatelessWidget {
                     Text(
                       '•',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.35),
+                        color: SysDashColors.textMuted,
                         fontSize: 11,
                       ),
                     ),
@@ -461,7 +486,7 @@ class _ServerDynamicPill extends StatelessWidget {
                     // Ping
                     Text(
                       '${activeNode.sshPingMs}ms',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: SysDashColors.cpuCyan,
                         fontSize: 11,
                         fontFamily: 'monospace',
@@ -469,7 +494,7 @@ class _ServerDynamicPill extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 2),
-                    const Icon(
+                    Icon(
                       Icons.arrow_drop_down_rounded,
                       color: SysDashColors.textSecondary,
                       size: 18,
@@ -513,9 +538,9 @@ class _ServerControlSheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.82,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xF20B1222),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: SysDashColors.isDark ? const Color(0xF20B1222) : const Color(0xF5FFFFFF),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
           top: BorderSide(color: SysDashColors.glassBorderHighlight, width: 1.2),
         ),
@@ -538,7 +563,9 @@ class _ServerControlSheet extends StatelessWidget {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
+                        color: SysDashColors.isDark
+                            ? Colors.white.withValues(alpha: 0.25)
+                            : Colors.black.withValues(alpha: 0.20),
                         borderRadius: BorderRadius.circular(99),
                       ),
                     ),
@@ -561,7 +588,7 @@ class _ServerControlSheet extends StatelessWidget {
                                     activeNode.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: SysDashColors.textPrimary,
                                       fontSize: 17,
                                       fontWeight: FontWeight.w800,
@@ -590,7 +617,7 @@ class _ServerControlSheet extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               '${activeNode.sshAddress} • ${activeNode.sshPingMs}ms',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: SysDashColors.cpuCyan,
                                 fontSize: 12,
                                 fontFamily: 'monospace',
@@ -602,7 +629,7 @@ class _ServerControlSheet extends StatelessWidget {
                       IconButton(
                         tooltip: 'Đóng',
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: SysDashColors.textSecondary),
+                        icon: Icon(Icons.close_rounded, color: SysDashColors.textSecondary),
                       ),
                     ],
                   ),
@@ -612,7 +639,7 @@ class _ServerControlSheet extends StatelessWidget {
                   if (nodes.length > 1) ...[
                     Text(
                       s.selectNode,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: SysDashColors.textSecondary,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -621,7 +648,9 @@ class _ServerControlSheet extends StatelessWidget {
                     const SizedBox(height: 8),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.04),
+                        color: SysDashColors.isDark
+                            ? Colors.white.withValues(alpha: 0.04)
+                            : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: SysDashColors.glassBorderSubtle),
                       ),
@@ -631,7 +660,7 @@ class _ServerControlSheet extends StatelessWidget {
                             if (i > 0)
                               Divider(
                                 height: 1,
-                                color: Colors.white.withValues(alpha: 0.06),
+                                color: SysDashColors.dividerColor,
                               ),
                             ListTile(
                               onTap: () => onSelectNode(i),
@@ -659,17 +688,17 @@ class _ServerControlSheet extends StatelessWidget {
                               ),
                               subtitle: Text(
                                 nodes[i].sshAddress,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: SysDashColors.textMuted,
                                   fontSize: 11,
                                   fontFamily: 'monospace',
                                 ),
                               ),
                               trailing: i == selectedIndex
-                                  ? const Icon(Icons.check_rounded, color: SysDashColors.cpuCyan, size: 18)
+                                  ? Icon(Icons.check_rounded, color: SysDashColors.cpuCyan, size: 18)
                                   : Text(
                                       '${nodes[i].sshPingMs}ms',
-                                      style: const TextStyle(color: SysDashColors.textMuted, fontSize: 11),
+                                      style: TextStyle(color: SysDashColors.textMuted, fontSize: 11),
                                     ),
                             ),
                           ],
@@ -688,7 +717,7 @@ class _ServerControlSheet extends StatelessWidget {
                         // Live Stream toggle row
                         Row(
                           children: [
-                            const IconBadge(
+                            IconBadge(
                               icon: Icons.sensors_rounded,
                               color: SysDashColors.statusEmerald,
                               size: 34,
@@ -700,7 +729,7 @@ class _ServerControlSheet extends StatelessWidget {
                                 children: [
                                   Text(
                                     s.liveStream,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: SysDashColors.textPrimary,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
@@ -708,7 +737,7 @@ class _ServerControlSheet extends StatelessWidget {
                                   ),
                                   Text(
                                     s.liveStreamDesc,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: SysDashColors.textSecondary,
                                       fontSize: 11.5,
                                     ),
@@ -723,13 +752,13 @@ class _ServerControlSheet extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Divider(
                             height: 1,
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: SysDashColors.dividerColor,
                           ),
                         ),
                         // Language selection row
                         Row(
                           children: [
-                            const IconBadge(
+                            IconBadge(
                               icon: Icons.translate_rounded,
                               color: SysDashColors.cpuCyan,
                               size: 34,
@@ -738,7 +767,7 @@ class _ServerControlSheet extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 s.language,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: SysDashColors.textPrimary,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -746,6 +775,47 @@ class _ServerControlSheet extends StatelessWidget {
                               ),
                             ),
                             const LanguageSelector(),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(
+                            height: 1,
+                            color: SysDashColors.dividerColor,
+                          ),
+                        ),
+                        // Theme selection row
+                        Row(
+                          children: [
+                            IconBadge(
+                              icon: Icons.palette_outlined,
+                              color: SysDashColors.ramViolet,
+                              size: 34,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    s.theme,
+                                    style: TextStyle(
+                                      color: SysDashColors.textPrimary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    s.themeDesc,
+                                    style: TextStyle(
+                                      color: SysDashColors.textSecondary,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const ThemeSelector(),
                           ],
                         ),
                       ],
@@ -765,7 +835,7 @@ class _ServerControlSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                         child: Row(
                           children: [
-                            const IconBadge(
+                            IconBadge(
                               icon: Icons.troubleshoot_rounded,
                               color: SysDashColors.cpuCyan,
                               size: 34,
@@ -779,14 +849,14 @@ class _ServerControlSheet extends StatelessWidget {
                                     children: [
                                       Text(
                                         s.systemDiagnostics,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: SysDashColors.textPrimary,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                       const SizedBox(width: 6),
-                                      const GlassPill(
+                                      GlassPill(
                                         text: 'Admin',
                                         color: SysDashColors.cpuCyan,
                                       ),
@@ -795,7 +865,7 @@ class _ServerControlSheet extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     s.diagnosticsDesc,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: SysDashColors.textSecondary,
                                       fontSize: 11.5,
                                     ),
@@ -803,7 +873,7 @@ class _ServerControlSheet extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const Icon(
+                            Icon(
                               Icons.chevron_right_rounded,
                               color: SysDashColors.textSecondary,
                             ),
@@ -890,7 +960,7 @@ class _LiveStreamButton extends StatelessWidget {
                 constraints: const BoxConstraints(minHeight: 40),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: SysDashColors.surfaceSubtle,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: color.withValues(alpha: 0.45)),
                 ),
@@ -911,7 +981,7 @@ class _LiveStreamButton extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: SysDashColors.textPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -968,9 +1038,9 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.88,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xF20B1222),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: SysDashColors.isDark ? const Color(0xF20B1222) : const Color(0xF2F1F5F9),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
           top: BorderSide(color: SysDashColors.glassBorderHighlight, width: 1.2),
         ),
@@ -990,7 +1060,9 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
+                      color: SysDashColors.isDark
+                          ? Colors.white.withValues(alpha: 0.25)
+                          : Colors.black.withValues(alpha: 0.20),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -999,7 +1071,7 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                   padding: const EdgeInsets.fromLTRB(20, 14, 12, 12),
                   child: Row(
                     children: [
-                      const IconBadge(
+                      IconBadge(
                         icon: Icons.troubleshoot_rounded,
                         color: SysDashColors.cpuCyan,
                         size: 38,
@@ -1013,18 +1085,18 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                               children: [
                                 Text(
                                   s.systemDiagnostics,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: SysDashColors.textPrimary,
                                     fontSize: 16.5,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                const GlassPill(text: 'Admin', color: SysDashColors.cpuCyan),
+                                GlassPill(text: 'Admin', color: SysDashColors.cpuCyan),
                               ],
                             ),
                             const SizedBox(height: 2),
-                            const Text(
+                            Text(
                               'GET /system/diagnostics',
                               style: TextStyle(
                                 color: SysDashColors.textSecondary,
@@ -1038,23 +1110,23 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                       IconButton(
                         tooltip: 'Tải lại',
                         onPressed: _reload,
-                        icon: const Icon(Icons.refresh_rounded, color: SysDashColors.cpuCyan),
+                        icon: Icon(Icons.refresh_rounded, color: SysDashColors.cpuCyan),
                       ),
                       IconButton(
                         tooltip: 'Đóng',
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: SysDashColors.textSecondary),
+                        icon: Icon(Icons.close_rounded, color: SysDashColors.textSecondary),
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 1, color: SysDashColors.glassBorderSubtle),
+                Divider(height: 1, color: SysDashColors.glassBorderSubtle),
                 Expanded(
                   child: FutureBuilder<SystemDiagnostics>(
                     future: _future,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
+                        return Center(
                           child: CircularProgressIndicator(color: SysDashColors.cpuCyan),
                         );
                       }
@@ -1070,7 +1142,7 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                                 Text(
                                   '${snapshot.error}',
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(color: SysDashColors.textPrimary, fontSize: 13),
+                                  style: TextStyle(color: SysDashColors.textPrimary, fontSize: 13),
                                 ),
                                 const SizedBox(height: 16),
                                 OutlinedButton.icon(
@@ -1129,7 +1201,7 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                                 Text(
                                   'Công thức: MemTotal - MemFree - Buffers - Cached - SReclaimable (Hệ 1024)',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.6),
+                                    color: SysDashColors.textSecondary,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -1137,8 +1209,11 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                                 if (diag.meminfoRawBytes.isNotEmpty)
                                   Container(
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.25),
+                                      color: SysDashColors.isDark
+                                          ? Colors.black.withValues(alpha: 0.25)
+                                          : const Color(0xFFF1F5F9),
                                       borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: SysDashColors.glassBorderSubtle),
                                     ),
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     child: Column(
@@ -1151,7 +1226,7 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                                               children: [
                                                 Text(
                                                   entry.key,
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     color: SysDashColors.textSecondary,
                                                     fontSize: 12,
                                                     fontFamily: 'monospace',
@@ -1159,7 +1234,7 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                                                 ),
                                                 Text(
                                                   '${formatGb(entry.value / (1024 * 1024 * 1024))} (${entry.value} B)',
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     color: SysDashColors.textPrimary,
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w600,
@@ -1194,14 +1269,14 @@ class _SystemDiagnosticsSheetState extends State<_SystemDiagnosticsSheet> {
                                 Text(
                                   'Lý do chấp nhận hoặc bỏ qua các phân vùng ảo/tmpfs/snap',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.6),
+                                    color: SysDashColors.textSecondary,
                                     fontSize: 11,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                                 for (var i = 0; i < diag.partitionsScan.length; i++) ...[
                                   if (i > 0)
-                                    Divider(height: 16, color: Colors.white.withValues(alpha: 0.08)),
+                                    Divider(height: 16, color: SysDashColors.dividerColor),
                                   _PartitionScanRow(item: diag.partitionsScan[i]),
                                 ],
                               ],
@@ -1255,7 +1330,7 @@ class _PartitionScanRow extends StatelessWidget {
               if (item.statPath.isNotEmpty && item.statPath != item.mountpoint)
                 Text(
                   'stat_path: ${item.statPath}',
-                  style: const TextStyle(color: SysDashColors.textMuted, fontSize: 11),
+                  style: TextStyle(color: SysDashColors.textMuted, fontSize: 11),
                 ),
               const SizedBox(height: 2),
               Text(

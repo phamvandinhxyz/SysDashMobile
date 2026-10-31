@@ -23,8 +23,12 @@ class SecureCredentialStore {
   static const _profilesKey = 'sysdash.server_profiles.v2';
   static const _legacyProfilesKey = 'sysdash.ssh_profiles.v1';
   static const _lastProfileKey = 'sysdash.last_profile_id.v2';
+  static const _themeModeKey = 'sysdash.theme_mode.v1';
 
   final FlutterSecureStorage _storage;
+
+  Future<String?> getThemeMode() => _storage.read(key: _themeModeKey);
+  Future<void> setThemeMode(String mode) => _storage.write(key: _themeModeKey, value: mode);
 
   Future<List<ServerProfile>> loadProfiles() async {
     var raw = await _storage.read(key: _profilesKey);

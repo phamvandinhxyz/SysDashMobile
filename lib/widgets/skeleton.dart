@@ -180,7 +180,7 @@ class SkeletonHeroCard extends StatelessWidget {
 
   const SkeletonHeroCard({
     super.key,
-    this.accent = SysDashColors.cpuCyan,
+    this.accent = SysDashColors.defaultCpuCyan,
     this.factCount = 4,
   });
 
@@ -248,7 +248,7 @@ class SkeletonHeroCard extends StatelessWidget {
 /// Shimmering skeleton card representing an Overview metric tile (CPU, RAM, Disk, Net).
 class SkeletonMetricCard extends StatelessWidget {
   final Color accent;
-  const SkeletonMetricCard({super.key, this.accent = SysDashColors.cpuCyan});
+  const SkeletonMetricCard({super.key, this.accent = SysDashColors.defaultCpuCyan});
 
   @override
   Widget build(BuildContext context) {
@@ -295,7 +295,7 @@ class SkeletonChartCard extends StatelessWidget {
   const SkeletonChartCard({
     super.key,
     this.title,
-    this.accent = SysDashColors.cpuCyan,
+    this.accent = SysDashColors.defaultCpuCyan,
     this.height = 180,
   });
 
@@ -387,7 +387,7 @@ class SkeletonProcessList extends StatelessWidget {
     super.key,
     required this.title,
     this.count = 5,
-    this.accent = SysDashColors.cpuCyan,
+    this.accent = SysDashColors.defaultCpuCyan,
   });
 
   @override
@@ -420,7 +420,7 @@ class SkeletonProcessList extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: SysDashColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -474,7 +474,7 @@ class SkeletonDiskList extends StatelessWidget {
   const SkeletonDiskList({
     super.key,
     this.count = 3,
-    this.accent = SysDashColors.diskAmber,
+    this.accent = SysDashColors.defaultDiskAmber,
   });
 
   @override
@@ -546,7 +546,7 @@ class SkeletonNetworkList extends StatelessWidget {
   const SkeletonNetworkList({
     super.key,
     this.count = 2,
-    this.accent = SysDashColors.netIndigo,
+    this.accent = SysDashColors.defaultNetIndigo,
   });
 
   @override
@@ -624,7 +624,7 @@ class SkeletonContainerList extends StatelessWidget {
   const SkeletonContainerList({
     super.key,
     this.count = 3,
-    this.accent = SysDashColors.netIndigo,
+    this.accent = SysDashColors.defaultNetIndigo,
   });
 
   @override
@@ -728,7 +728,7 @@ class SkeletonDockerImageList extends StatelessWidget {
   const SkeletonDockerImageList({
     super.key,
     this.count = 2,
-    this.accent = SysDashColors.diskAmber,
+    this.accent = SysDashColors.defaultDiskAmber,
   });
 
   @override
@@ -799,7 +799,7 @@ class SkeletonCoreLoadsGrid extends StatelessWidget {
   const SkeletonCoreLoadsGrid({
     super.key,
     this.cores = 8,
-    this.accent = SysDashColors.cpuCyan,
+    this.accent = SysDashColors.defaultCpuCyan,
   });
 
   @override
@@ -886,25 +886,25 @@ class OverviewSkeletonTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SkeletonHeroCard(accent: SysDashColors.statusEmerald, factCount: 4),
+        SkeletonHeroCard(accent: SysDashColors.statusEmerald, factCount: 4),
         const SizedBox(height: 16),
         Row(
-          children: const [
+          children: [
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.statusEmerald)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.cpuCyan)),
           ],
         ),
         const SizedBox(height: 12),
         Row(
-          children: const [
+          children: [
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.diskAmber)),
           ],
         ),
         const SizedBox(height: 16),
-        const SkeletonChartCard(accent: SysDashColors.cpuCyan, height: 140),
+        SkeletonChartCard(accent: SysDashColors.cpuCyan, height: 140),
         const SizedBox(height: 16),
         SkeletonProcessList(
           title: strings.topProcesses,
@@ -925,21 +925,21 @@ class CpuSkeletonTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SkeletonHeroCard(accent: SysDashColors.cpuCyan, factCount: 5),
+        SkeletonHeroCard(accent: SysDashColors.cpuCyan, factCount: 5),
         const SizedBox(height: 16),
         Row(
-          children: const [
+          children: [
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.cpuCyan)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.statusEmerald)),
           ],
         ),
         const SizedBox(height: 16),
-        const SkeletonChartCard(accent: SysDashColors.cpuCyan, height: 150),
+        SkeletonChartCard(accent: SysDashColors.cpuCyan, height: 150),
         const SizedBox(height: 16),
-        const SkeletonCoreLoadsGrid(cores: 8, accent: SysDashColors.cpuCyan),
+        SkeletonCoreLoadsGrid(cores: 8, accent: SysDashColors.cpuCyan),
         const SizedBox(height: 16),
         SkeletonProcessList(
           title: strings.topProcesses,
@@ -960,25 +960,25 @@ class MemorySkeletonTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SkeletonHeroCard(accent: SysDashColors.ramViolet, factCount: 4),
+        SkeletonHeroCard(accent: SysDashColors.ramViolet, factCount: 4),
         const SizedBox(height: 16),
         Row(
-          children: const [
+          children: [
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
           ],
         ),
         const SizedBox(height: 12),
         Row(
-          children: const [
+          children: [
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.statusEmerald)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.tempOrange)),
           ],
         ),
         const SizedBox(height: 16),
-        const SkeletonChartCard(accent: SysDashColors.ramViolet, height: 150),
+        SkeletonChartCard(accent: SysDashColors.ramViolet, height: 150),
         const SizedBox(height: 16),
         SkeletonProcessList(
           title: strings.topMemoryProcesses,
@@ -998,11 +998,11 @@ class DisksSkeletonTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: const [
+      children: [
         SkeletonHeroCard(accent: SysDashColors.diskAmber, factCount: 4),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         SkeletonDiskList(count: 3, accent: SysDashColors.diskAmber),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         SkeletonChartCard(accent: SysDashColors.diskAmber, height: 150),
       ],
     );
@@ -1018,19 +1018,19 @@ class NetworkSkeletonTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SkeletonHeroCard(accent: SysDashColors.netIndigo, factCount: 4),
+        SkeletonHeroCard(accent: SysDashColors.netIndigo, factCount: 4),
         const SizedBox(height: 16),
         Row(
-          children: const [
+          children: [
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.netIndigo)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.netTxTeal)),
           ],
         ),
         const SizedBox(height: 16),
-        const SkeletonChartCard(accent: SysDashColors.netIndigo, height: 150),
+        SkeletonChartCard(accent: SysDashColors.netIndigo, height: 150),
         const SizedBox(height: 16),
-        const SkeletonNetworkList(count: 2, accent: SysDashColors.netIndigo),
+        SkeletonNetworkList(count: 2, accent: SysDashColors.netIndigo),
       ],
     );
   }
@@ -1044,29 +1044,29 @@ class ContainersSkeletonTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: const [
+      children: [
         Row(
           children: [
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.statusEmerald)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.diskAmber)),
           ],
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.cpuCyan)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
           ],
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         SkeletonChartCard(accent: SysDashColors.cpuCyan, height: 160),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         SkeletonChartCard(accent: SysDashColors.ramViolet, height: 160),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         SkeletonContainerList(count: 3, accent: SysDashColors.netIndigo),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         SkeletonDockerImageList(count: 2, accent: SysDashColors.diskAmber),
       ],
     );
@@ -1141,11 +1141,11 @@ class _DashboardSkeletonViewState extends State<DashboardSkeletonView> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SysDashAppIcon(size: 20, borderRadius: 5),
-                          SizedBox(width: 8),
+                          const SysDashAppIcon(size: 20, borderRadius: 5),
+                          const SizedBox(width: 8),
                           Text(
                             'SysDash',
                             style: TextStyle(
@@ -1183,7 +1183,7 @@ class _DashboardSkeletonViewState extends State<DashboardSkeletonView> {
                                 const SizedBox(width: 6),
                                 Text(
                                   widget.profile.displayName,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: SysDashColors.textPrimary,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -1204,7 +1204,7 @@ class _DashboardSkeletonViewState extends State<DashboardSkeletonView> {
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(color: SysDashColors.glassBorderSubtle),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.logout_rounded,
                                   size: 16,
                                   color: SysDashColors.textMuted,
@@ -1237,7 +1237,7 @@ class _DashboardSkeletonViewState extends State<DashboardSkeletonView> {
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
-                                    valueColor: const AlwaysStoppedAnimation<Color>(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
                                       SysDashColors.cpuCyan,
                                     ),
                                     backgroundColor:
@@ -1251,7 +1251,7 @@ class _DashboardSkeletonViewState extends State<DashboardSkeletonView> {
                                     children: [
                                       Text(
                                         s.loadingTelemetry,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: SysDashColors.textPrimary,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700,
@@ -1260,7 +1260,7 @@ class _DashboardSkeletonViewState extends State<DashboardSkeletonView> {
                                       const SizedBox(height: 2),
                                       Text(
                                         s.waitingForData,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: SysDashColors.textSecondary,
                                           fontSize: 12,
                                         ),

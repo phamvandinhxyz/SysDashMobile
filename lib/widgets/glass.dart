@@ -31,6 +31,7 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final glow = glowColor ?? SysDashColors.cpuCyan;
     final radius = BorderRadius.circular(borderRadius);
+    final isDark = SysDashColors.isDark;
 
     Widget surface = Container(
       padding: padding,
@@ -39,11 +40,17 @@ class GlassCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            highlighted ? glow.withValues(alpha: 0.18) : SysDashColors.glassFillTop,
-            SysDashColors.glassFillBottom,
-            glow.withValues(alpha: highlighted ? 0.08 : 0.03),
-          ],
+          colors: isDark
+              ? [
+                  highlighted ? glow.withValues(alpha: 0.18) : SysDashColors.glassFillTop,
+                  SysDashColors.glassFillBottom,
+                  glow.withValues(alpha: highlighted ? 0.08 : 0.03),
+                ]
+              : [
+                  highlighted ? glow.withValues(alpha: 0.12) : SysDashColors.glassFillTop,
+                  SysDashColors.glassFillBottom,
+                  highlighted ? glow.withValues(alpha: 0.08) : SysDashColors.glassFillBottom,
+                ],
           stops: const [0.0, 0.65, 1.0],
         ),
       ),
@@ -68,10 +75,19 @@ class GlassCard extends StatelessWidget {
         borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.30),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.30)
+                : const Color(0x0C0F172A),
+            blurRadius: isDark ? 24 : 14,
+            spreadRadius: isDark ? 0 : 0.5,
+            offset: Offset(0, isDark ? 10 : 4),
           ),
+          if (!isDark)
+            const BoxShadow(
+              color: Color(0x060F172A),
+              blurRadius: 4,
+              offset: Offset(0, 1),
+            ),
         ],
       ),
       child: ClipRRect(
@@ -107,19 +123,30 @@ class GlassBorderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
+    final isDark = SysDashColors.isDark;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = highlighted ? 1.6 : 1.1
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          highlighted
-              ? glowColor.withValues(alpha: 0.85)
-              : SysDashColors.glassBorderHighlight,
-          SysDashColors.glassBorderSubtle,
-          glowColor.withValues(alpha: highlighted ? 0.55 : 0.24),
-        ],
+        colors: isDark
+            ? [
+                highlighted
+                    ? glowColor.withValues(alpha: 0.85)
+                    : SysDashColors.glassBorderHighlight,
+                SysDashColors.glassBorderSubtle,
+                glowColor.withValues(alpha: highlighted ? 0.55 : 0.24),
+              ]
+            : [
+                highlighted
+                    ? glowColor.withValues(alpha: 0.85)
+                    : SysDashColors.glassBorderHighlight,
+                SysDashColors.glassBorderSubtle,
+                highlighted
+                    ? glowColor.withValues(alpha: 0.60)
+                    : SysDashColors.glassBorderSubtle,
+              ],
         stops: const [0.0, 0.5, 1.0],
       ).createShader(rect);
     canvas.drawRRect(
@@ -135,16 +162,17 @@ class GlassBorderPainter extends CustomPainter {
       old.radius != radius;
 }
 
-/// Dark gradient backdrop with soft coloured light orbs – gives the glass
+/// Gradient backdrop with soft coloured light orbs – gives the glass
 /// something to refract.
 class AmbientBackground extends StatelessWidget {
   const AmbientBackground({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = SysDashColors.isDark;
     return IgnorePointer(
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -160,17 +188,26 @@ class AmbientBackground extends StatelessWidget {
             Positioned(
               top: -80,
               left: -60,
-              child: _GlowOrb(280, SysDashColors.cpuCyan.withValues(alpha: 0.18)),
+              child: _GlowOrb(
+                280,
+                SysDashColors.cpuCyan.withValues(alpha: isDark ? 0.18 : 0.05),
+              ),
             ),
             Positioned(
               top: 260,
               right: -90,
-              child: _GlowOrb(320, SysDashColors.ramViolet.withValues(alpha: 0.15)),
+              child: _GlowOrb(
+                320,
+                SysDashColors.ramViolet.withValues(alpha: isDark ? 0.15 : 0.04),
+              ),
             ),
             Positioned(
               bottom: -100,
               left: 30,
-              child: _GlowOrb(280, SysDashColors.statusEmerald.withValues(alpha: 0.12)),
+              child: _GlowOrb(
+                280,
+                SysDashColors.statusEmerald.withValues(alpha: isDark ? 0.12 : 0.04),
+              ),
             ),
           ],
         ),
@@ -266,48 +303,51 @@ class SectionHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.badge,
-    this.accent = SysDashColors.cpuCyan,
+    this.accent = SysDashColors.defaultCpuCyan,
     this.trailing,
   });
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Row(
-      children: [
-        Container(
-          width: 4,
-          height: 16,
-          decoration: BoxDecoration(
-            color: accent,
-            borderRadius: BorderRadius.circular(2),
-            boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.6), blurRadius: 6)],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: SysDashColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final effectiveAccent = accent == SysDashColors.defaultCpuCyan ? SysDashColors.cpuCyan : accent;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 16,
+            decoration: BoxDecoration(
+              color: effectiveAccent,
+              borderRadius: BorderRadius.circular(2),
+              boxShadow: [BoxShadow(color: effectiveAccent.withValues(alpha: 0.6), blurRadius: 6)],
             ),
           ),
-        ),
-        if (badge != null) ...[
           const SizedBox(width: 8),
-          Flexible(child: GlassPill(text: badge!, color: accent)),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: SysDashColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          if (badge != null) ...[
+            const SizedBox(width: 8),
+            Flexible(child: GlassPill(text: badge!, color: accent)),
+          ],
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing!,
+          ],
         ],
-        if (trailing != null) ...[
-          const SizedBox(width: 8),
-          trailing!,
-        ],
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 /// Thin rounded progress bar.
@@ -329,7 +369,9 @@ class GlassProgressBar extends StatelessWidget {
     child: LinearProgressIndicator(
       value: value.clamp(0.0, 1.0),
       minHeight: height,
-      backgroundColor: Colors.white.withValues(alpha: 0.08),
+      backgroundColor: SysDashColors.isDark
+          ? Colors.white.withValues(alpha: 0.08)
+          : const Color(0x180F172A),
       valueColor: AlwaysStoppedAnimation<Color>(color),
     ),
   );
@@ -362,7 +404,9 @@ class GlassGauge extends StatelessWidget {
             value: (percent / 100).clamp(0.0, 1.0),
             strokeWidth: size * 0.09,
             strokeCap: StrokeCap.round,
-            backgroundColor: Colors.white.withValues(alpha: 0.08),
+            backgroundColor: SysDashColors.isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : const Color(0x180F172A),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
@@ -378,3 +422,4 @@ class GlassGauge extends StatelessWidget {
     ),
   );
 }
+

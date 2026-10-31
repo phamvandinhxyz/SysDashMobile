@@ -22,17 +22,18 @@ class TimeRangeSelector extends StatelessWidget {
     super.key,
     required this.selected,
     required this.onChanged,
-    this.accent = SysDashColors.cpuCyan,
+    this.accent = SysDashColors.defaultCpuCyan,
   });
 
   @override
   Widget build(BuildContext context) {
     final strings = LanguageScope.of(context);
+    final effectiveAccent = accent == SysDashColors.defaultCpuCyan ? SysDashColors.cpuCyan : accent;
     return Container(
       height: 44,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.18),
+        color: SysDashColors.isDark ? Colors.black.withValues(alpha: 0.18) : const Color(0x0C0F172A),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: SysDashColors.glassBorderSubtle),
       ),
@@ -44,7 +45,7 @@ class TimeRangeSelector extends StatelessWidget {
               label: strings.timeRange(range),
               isLive: range == TimeRange.live,
               selected: range == selected,
-              accent: accent,
+              accent: effectiveAccent,
               onTap: () => onChanged(range),
             ),
         ],
@@ -87,12 +88,14 @@ class _RangeChip extends StatelessWidget {
               borderRadius: BorderRadius.circular(11),
               gradient: selected
                   ? LinearGradient(colors: [
-                      accent.withValues(alpha: 0.34),
-                      accent.withValues(alpha: 0.14),
+                      accent.withValues(alpha: SysDashColors.isDark ? 0.34 : 0.18),
+                      accent.withValues(alpha: SysDashColors.isDark ? 0.14 : 0.08),
                     ])
                   : null,
               border: Border.all(
-                color: selected ? accent.withValues(alpha: 0.75) : Colors.transparent,
+                color: selected
+                    ? accent.withValues(alpha: SysDashColors.isDark ? 0.75 : 0.60)
+                    : Colors.transparent,
               ),
             ),
             child: Row(
@@ -260,14 +263,15 @@ class _TimeSeriesPainter extends CustomPainter {
     Canvas canvas,
     String text,
     Offset anchor, {
-    Color color = SysDashColors.textMuted,
+    Color? color,
     double size = 9.5,
     FontWeight weight = FontWeight.w500,
     TextAlign align = TextAlign.left,
     double maxX = double.infinity,
   }) {
+    final effectiveColor = color ?? SysDashColors.textMuted;
     final tp = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(color: color, fontSize: size, fontWeight: weight)),
+      text: TextSpan(text: text, style: TextStyle(color: effectiveColor, fontSize: size, fontWeight: weight)),
       textDirection: TextDirection.ltr,
     )..layout();
     var dx = switch (align) {
@@ -292,10 +296,11 @@ class _TimeSeriesPainter extends CustomPainter {
       }
     }
     final yMax = fixedMax ?? _niceCeil(maxValue * 1.15);
+    final isDark = SysDashColors.isDark;
 
     // --- Grid & Y labels
     final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.06)
+      ..color = isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0x140F172A)
       ..strokeWidth = 1;
     for (var i = 0; i <= 4; i++) {
       final y = plot.bottom - plot.height * i / 4;
@@ -355,7 +360,7 @@ class _TimeSeriesPainter extends CustomPainter {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              data.color.withValues(alpha: s == 0 ? 0.32 : 0.14),
+              data.color.withValues(alpha: s == 0 ? (isDark ? 0.32 : 0.22) : (isDark ? 0.14 : 0.10)),
               data.color.withValues(alpha: 0.0),
             ],
           ).createShader(plot),
@@ -371,7 +376,7 @@ class _TimeSeriesPainter extends CustomPainter {
 
       if (range == TimeRange.live && hoverIndex == null) {
         canvas.drawCircle(pts.last, 5.5, Paint()..color = data.color.withValues(alpha: 0.3));
-        canvas.drawCircle(pts.last, 2.8, Paint()..color = Colors.white);
+        canvas.drawCircle(pts.last, 2.8, Paint()..color = isDark ? Colors.white : const Color(0xFF0F172A));
       }
     }
 
@@ -383,14 +388,14 @@ class _TimeSeriesPainter extends CustomPainter {
       Offset(x, plot.top),
       Offset(x, plot.bottom),
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.35)
+        ..color = isDark ? Colors.white.withValues(alpha: 0.35) : const Color(0x380F172A)
         ..strokeWidth = 1,
     );
     for (final s in series) {
       if (hi >= s.samples.length) continue;
       final p = point(hi, s.samples[hi].value);
       canvas.drawCircle(p, 5, Paint()..color = s.color);
-      canvas.drawCircle(p, 2.4, Paint()..color = Colors.white);
+      canvas.drawCircle(p, 2.4, Paint()..color = isDark ? Colors.white : const Color(0xFF0F172A));
     }
 
     const boxW = 132.0;
@@ -401,12 +406,12 @@ class _TimeSeriesPainter extends CustomPainter {
       Rect.fromLTWH(left.clamp(0.0, size.width - boxW), plot.top, boxW, boxH),
       const Radius.circular(10),
     );
-    canvas.drawRRect(box, Paint()..color = const Color(0xE60F172A));
+    canvas.drawRRect(box, Paint()..color = isDark ? const Color(0xE60F172A) : const Color(0xF8FFFFFF));
     canvas.drawRRect(
       box,
       Paint()
         ..style = PaintingStyle.stroke
-        ..color = Colors.white.withValues(alpha: 0.18),
+        ..color = isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0x240F172A),
     );
     _text(
       canvas,
@@ -512,7 +517,7 @@ class _MetricChartCardState extends State<MetricChartCard> {
                       widget.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: SysDashColors.textPrimary,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -521,7 +526,7 @@ class _MetricChartCardState extends State<MetricChartCard> {
                     const SizedBox(height: 2),
                     Text(
                       strings.timeRange(_range),
-                      style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 12),
+                      style: TextStyle(color: SysDashColors.textSecondary, fontSize: 12),
                     ),
                   ],
                 ),
@@ -654,7 +659,7 @@ class _Legend extends StatelessWidget {
         decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
       ),
       const SizedBox(width: 5),
-      Text(label, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5)),
+      Text(label, style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11.5)),
       const SizedBox(width: 4),
     ],
   );
@@ -678,11 +683,11 @@ class _StatChip extends StatelessWidget {
         children: [
           TextSpan(
             text: '$label ',
-            style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 11),
+            style: TextStyle(color: SysDashColors.textSecondary, fontSize: 11),
           ),
           TextSpan(
             text: value,
-            style: const TextStyle(
+            style: TextStyle(
               color: SysDashColors.textPrimary,
               fontSize: 11,
               fontWeight: FontWeight.w700,

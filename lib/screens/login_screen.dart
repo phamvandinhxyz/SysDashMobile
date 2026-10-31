@@ -246,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Row(
                 children: [
-                  const IconBadge(
+                  IconBadge(
                     icon: Icons.hub_rounded,
                     color: SysDashColors.cpuCyan,
                     size: 38,
@@ -258,7 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Text(
                           strings.loginTitle,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: SysDashColors.textPrimary,
                             fontSize: 16.5,
                             fontWeight: FontWeight.w800,
@@ -267,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-                  const GlassPill(
+                  GlassPill(
                     text: 'v1.0 API',
                     color: SysDashColors.statusEmerald,
                   ),
@@ -346,13 +346,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           onChanged: (v) => setState(() => _remember = v),
                           activeThumbColor: SysDashColors.cpuCyan,
                           activeTrackColor: SysDashColors.cpuCyan.withValues(alpha: 0.35),
-                          inactiveTrackColor: Colors.white.withValues(alpha: 0.08),
+                          inactiveTrackColor: SysDashColors.isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.12),
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             strings.rememberMe,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: SysDashColors.textPrimary,
                               fontSize: 13,
                             ),
@@ -380,7 +382,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.error_outline_rounded,
                           color: SysDashColors.statusCrimson,
                           size: 20,
@@ -389,7 +391,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: Text(
                             _error!,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: SysDashColors.textPrimary,
                               fontSize: 12.5,
                             ),
@@ -426,7 +428,7 @@ class _Brand extends StatelessWidget {
       children: [
         const SysDashAppIcon(size: 76, borderRadius: 22),
         const SizedBox(height: 14),
-        const Text(
+        Text(
           'SysDash',
           style: TextStyle(
             color: SysDashColors.textPrimary,
@@ -439,7 +441,7 @@ class _Brand extends StatelessWidget {
         Text(
           strings.loginSubtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: SysDashColors.textSecondary,
             fontSize: 13.5,
           ),
@@ -478,7 +480,7 @@ class _SavedProfiles extends StatelessWidget {
             children: [
               Text(
                 strings.savedServers,
-                style: const TextStyle(
+                style: TextStyle(
                   color: SysDashColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -523,7 +525,7 @@ class _SavedProfiles extends StatelessWidget {
                                     p.displayName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: SysDashColors.textPrimary,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13.5,
@@ -560,7 +562,7 @@ class _SavedProfiles extends StatelessWidget {
                               '${p.username} @ ${p.cleanUrl}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: SysDashColors.textSecondary,
                                 fontFamily: 'monospace',
                                 fontSize: 11,
@@ -572,7 +574,7 @@ class _SavedProfiles extends StatelessWidget {
                       IconButton(
                         tooltip: strings.deleteProfile,
                         onPressed: () => onDelete(p),
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.delete_outline_rounded,
                           color: SysDashColors.textSecondary,
                           size: 20,
@@ -634,12 +636,12 @@ class _GlassField extends StatelessWidget {
       onFieldSubmitted: onSubmitted,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       cursorColor: SysDashColors.cpuCyan,
-      style: const TextStyle(color: SysDashColors.textPrimary, fontSize: 14.5),
+      style: TextStyle(color: SysDashColors.textPrimary, fontSize: 14.5),
       decoration: InputDecoration(
         labelText: label,
         labelStyle:
-            const TextStyle(color: SysDashColors.textSecondary, fontSize: 13.5),
-        floatingLabelStyle: const TextStyle(color: SysDashColors.cpuCyan),
+            TextStyle(color: SysDashColors.textSecondary, fontSize: 13.5),
+        floatingLabelStyle: TextStyle(color: SysDashColors.cpuCyan),
         prefixIcon: icon == null
             ? null
             : Icon(icon, color: SysDashColors.textSecondary, size: 20),
@@ -650,7 +652,8 @@ class _GlassField extends StatelessWidget {
             const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         errorStyle: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 11.5),
         errorMaxLines: 2,
-        enabledBorder: _border(Colors.white.withValues(alpha: 0.12)),
+        enabledBorder: _border(
+            SysDashColors.isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0x1F0F172A)),
         focusedBorder:
             _border(SysDashColors.cpuCyan.withValues(alpha: 0.8), 1.4),
         errorBorder:

@@ -15,14 +15,16 @@ class LanguageSelector extends StatelessWidget {
     final currentLang = controller.value;
     final isVi = currentLang == AppLanguage.vi;
 
+    final isDark = SysDashColors.isDark;
+
     return Theme(
       data: Theme.of(context).copyWith(
         popupMenuTheme: PopupMenuThemeData(
-          color: const Color(0xF00F172A),
+          color: isDark ? const Color(0xF00F172A) : const Color(0xF2FFFFFF),
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: SysDashColors.glassBorderHighlight),
+            side: BorderSide(color: SysDashColors.glassBorderHighlight),
           ),
           elevation: 12,
         ),
@@ -71,7 +73,7 @@ class LanguageSelector extends StatelessWidget {
               const SizedBox(width: 5),
               Text(
                 isVi ? 'VI' : 'EN',
-                style: const TextStyle(
+                style: TextStyle(
                   color: SysDashColors.textPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -79,7 +81,7 @@ class LanguageSelector extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 2),
-              const Icon(
+              Icon(
                 Icons.arrow_drop_down_rounded,
                 color: SysDashColors.textSecondary,
                 size: 18,
@@ -145,7 +147,7 @@ class LanguageSelector extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           if (isSelected)
-            const Icon(
+            Icon(
               Icons.check_rounded,
               color: SysDashColors.cpuCyan,
               size: 18,
