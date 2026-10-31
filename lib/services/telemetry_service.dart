@@ -567,8 +567,8 @@ class TelemetryService extends ChangeNotifier {
         (json['disk_write_bytes_sec'] as num?)?.toDouble() ??
         (json['disk_write'] as num?)?.toDouble() ??
         0.0;
-    final diskReadMbps = diskReadBytes > 1024 * 1024 ? diskReadBytes / (1024 * 1024) : diskReadBytes;
-    final diskWriteMbps = diskWriteBytes > 1024 * 1024 ? diskWriteBytes / (1024 * 1024) : diskWriteBytes;
+    final diskReadMbps = diskReadBytes / (1024 * 1024);
+    final diskWriteMbps = diskWriteBytes / (1024 * 1024);
 
     primaryNode.current[MetricKey.disk] = diskPercent;
     primaryNode.current[MetricKey.diskRead] = diskReadMbps;
