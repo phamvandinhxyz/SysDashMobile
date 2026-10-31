@@ -55,6 +55,7 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
   bool _pointerIsDown = false;
   Timer? _holdTimer;
   double? _dragFraction;
+  double? _settledFraction;
   double _dragOffset = 0.0;
   int? _lastHapticIndex;
   double? _bounceImpactProgress;
@@ -84,6 +85,14 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
   @override
   void didUpdateWidget(GlassNavBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_settledFraction != null) {
+      if (widget.currentIndex != oldWidget.currentIndex && widget.currentIndex != _settledFraction!.round()) {
+        _settledFraction = null;
+      } else if (widget.pageController == null || !widget.pageController!.hasClients ||
+          (widget.pageController!.page != null && (widget.pageController!.page! - _settledFraction!).abs() < 0.05)) {
+        _settledFraction = null;
+      }
+    }
     if (oldWidget.pageController != widget.pageController) {
       oldWidget.pageController?.removeListener(_onPageScroll);
       widget.pageController?.addListener(_onPageScroll);
@@ -100,6 +109,21 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
 
   void _onPageScroll() {
     if (!_isDragging && !_isFlinging && mounted) {
+      if (_settledFraction != null) {
+        if (widget.pageController?.hasClients == true) {
+          final isUserScreenSwiping = widget.pageController!.position.userScrollDirection != ScrollDirection.idle;
+          if (isUserScreenSwiping) {
+            _settledFraction = null;
+          } else {
+            final page = widget.pageController!.page;
+            if (page != null && (page - _settledFraction!).abs() < 0.05) {
+              _settledFraction = null;
+            }
+          }
+        } else {
+          _settledFraction = null;
+        }
+      }
       setState(() {});
     }
   }
@@ -146,6 +170,7 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
         setState(() {
           _isFlinging = false;
           _dragFraction = null;
+          _settledFraction = target.toDouble();
         });
         widget.onTap(target);
       }
@@ -156,6 +181,9 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
     if ((_isDragging || _isFlinging) && _dragFraction != null) {
       final maxIdx = (widget.items.length - 1).toDouble();
       return _dragFraction!.clamp(-0.25, maxIdx + 0.25);
+    }
+    if (_settledFraction != null) {
+      return _settledFraction!;
     }
     if (widget.pageController != null && widget.pageController!.hasClients) {
       final page = widget.pageController!.page;
@@ -188,6 +216,7 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
 
   void _onPointerDown(PointerDownEvent event, double itemWidth) {
     _pointerIsDown = true;
+    _settledFraction = null;
     _holdTimer?.cancel();
     _velocityTracker = VelocityTracker.withKind(event.kind);
     _velocityTracker?.addPosition(event.timeStamp, event.position);
@@ -308,12 +337,11 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
         // Glide is already in progress towards tappedIndex; let it finish and trigger onTap in _onFlingStatus
         return;
       }
-      if (_isDragging) {
-        setState(() {
-          _isDragging = false;
-          _dragFraction = null;
-        });
-      }
+      setState(() {
+        _isDragging = false;
+        _dragFraction = null;
+        _settledFraction = tappedIndex.toDouble();
+      });
       HapticFeedback.selectionClick();
       widget.onTap(tappedIndex);
       return;
@@ -449,6 +477,7 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
           _isDragging = false;
           _isFlinging = false;
           _dragFraction = null;
+          _settledFraction = targetIndex.toDouble();
         });
         widget.onTap(targetIndex);
         return;
