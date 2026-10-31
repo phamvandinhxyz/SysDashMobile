@@ -214,14 +214,16 @@ class _TimeSeriesChartState extends State<TimeSeriesChart> {
             onHorizontalDragUpdate: (d) => _hover(d.localPosition.dx, width),
             onHorizontalDragEnd: (_) => _clear(delay: const Duration(milliseconds: 900)),
             onHorizontalDragCancel: _clear,
-            child: CustomPaint(
-              size: Size(width, widget.height),
-              painter: _TimeSeriesPainter(
-                series: widget.series,
-                range: widget.range,
-                unit: widget.unit,
-                fixedMax: widget.fixedMax,
-                hoverIndex: _hoverIndex != null && _hoverIndex! < _length ? _hoverIndex : null,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                size: Size(width, widget.height),
+                painter: _TimeSeriesPainter(
+                  series: widget.series,
+                  range: widget.range,
+                  unit: widget.unit,
+                  fixedMax: widget.fixedMax,
+                  hoverIndex: _hoverIndex != null && _hoverIndex! < _length ? _hoverIndex : null,
+                ),
               ),
             ),
           );
@@ -708,9 +710,11 @@ class Sparkline extends StatelessWidget {
   const Sparkline({super.key, required this.samples, required this.color, this.max = 100});
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    painter: _SparklinePainter(samples, color, max),
-    size: Size.infinite,
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: CustomPaint(
+      painter: _SparklinePainter(samples, color, max),
+      size: Size.infinite,
+    ),
   );
 }
 

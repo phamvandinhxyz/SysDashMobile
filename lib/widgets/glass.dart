@@ -173,58 +173,60 @@ class AmbientBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     ThemeScope.maybeOf(context);
     final isDark = SysDashColors.isDark;
-    return IgnorePointer(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? const [
-                    Color(0xFF070B14),
-                    Color(0xFF0F172A),
-                    Color(0xFF070B14),
-                  ]
-                : const [
-                    Color(0xFFF8FAFD),
-                    Color(0xFFEDF2F7),
-                    Color(0xFFF3F6FA),
-                  ],
+    return RepaintBoundary(
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? const [
+                      Color(0xFF070B14),
+                      Color(0xFF0F172A),
+                      Color(0xFF070B14),
+                    ]
+                  : const [
+                      Color(0xFFF8FAFD),
+                      Color(0xFFEDF2F7),
+                      Color(0xFFF3F6FA),
+                    ],
+            ),
           ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: -80,
-              left: -60,
-              child: _GlowOrb(
-                280,
-                isDark
-                    ? SysDashColors.cpuCyan.withValues(alpha: 0.18)
-                    : const Color(0xFF38BDF8).withValues(alpha: 0.12),
+          child: Stack(
+            children: [
+              Positioned(
+                top: -80,
+                left: -60,
+                child: _GlowOrb(
+                  280,
+                  isDark
+                      ? SysDashColors.cpuCyan.withValues(alpha: 0.18)
+                      : const Color(0xFF38BDF8).withValues(alpha: 0.12),
+                ),
               ),
-            ),
-            Positioned(
-              top: 260,
-              right: -90,
-              child: _GlowOrb(
-                320,
-                isDark
-                    ? SysDashColors.ramViolet.withValues(alpha: 0.15)
-                    : const Color(0xFF818CF8).withValues(alpha: 0.10),
+              Positioned(
+                top: 260,
+                right: -90,
+                child: _GlowOrb(
+                  320,
+                  isDark
+                      ? SysDashColors.ramViolet.withValues(alpha: 0.15)
+                      : const Color(0xFF818CF8).withValues(alpha: 0.10),
+                ),
               ),
-            ),
-            Positioned(
-              bottom: -100,
-              left: 30,
-              child: _GlowOrb(
-                280,
-                isDark
-                    ? SysDashColors.statusEmerald.withValues(alpha: 0.12)
-                    : const Color(0xFF34D399).withValues(alpha: 0.08),
+              Positioned(
+                bottom: -100,
+                left: 30,
+                child: _GlowOrb(
+                  280,
+                  isDark
+                      ? SysDashColors.statusEmerald.withValues(alpha: 0.12)
+                      : const Color(0xFF34D399).withValues(alpha: 0.08),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

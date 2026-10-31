@@ -428,8 +428,9 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
     return Semantics(
       container: true,
       label: 'Bottom Navigation Bar',
-      child: SizedBox(
-        height: _barHeight,
+      child: RepaintBoundary(
+        child: SizedBox(
+          height: _barHeight,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -560,8 +561,9 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 /// The animated fluid capsule that slides beneath the active tab.
