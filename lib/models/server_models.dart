@@ -1,17 +1,21 @@
 import 'dart:convert';
 
-/// Authenticated user information returned by SysDashServer `/auth/login` and `/auth/me`.
+/// Authenticated user information returned by SysDashServer `/auth/login`, `/auth/me`, and `/users/:id`.
 class UserInfo {
   final int id;
   final String username;
   final String fullName;
   final String role; // 'admin' | 'viewer'
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   const UserInfo({
     required this.id,
     required this.username,
     required this.fullName,
     required this.role,
+    this.createdAt,
+    this.updatedAt,
   });
 
   bool get isAdmin => role.toLowerCase() == 'admin';
@@ -21,6 +25,12 @@ class UserInfo {
         username: (json['username'] as String?) ?? '',
         fullName: (json['full_name'] as String?) ?? '',
         role: (json['role'] as String?) ?? 'viewer',
+        createdAt: json['created_at'] != null
+            ? DateTime.tryParse(json['created_at'].toString())
+            : null,
+        updatedAt: json['updated_at'] != null
+            ? DateTime.tryParse(json['updated_at'].toString())
+            : null,
       );
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +38,47 @@ class UserInfo {
         'username': username,
         'full_name': fullName,
         'role': role,
+        if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+        if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+      };
+
+  UserInfo copyWith({
+    int? id,
+    String? username,
+    String? fullName,
+    String? role,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return UserInfo(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      fullName: fullName ?? this.fullName,
+      role: role ?? this.role,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+}
+
+/// Response payload returned by `PUT /users/:id` on SysDashServer.
+class UpdateUserResult {
+  final String message;
+  final UserInfo user;
+
+  const UpdateUserResult({
+    required this.message,
+    required this.user,
+  });
+
+  factory UpdateUserResult.fromJson(Map<String, dynamic> json) => UpdateUserResult(
+        message: (json['message'] as String?) ?? '',
+        user: UserInfo.fromJson((json['user'] as Map<String, dynamic>?) ?? {}),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'message': message,
+        'user': user.toJson(),
       };
 }
 
@@ -42,6 +93,7 @@ class ServerProfile {
   final String token;
   final String role;
   final String fullName;
+  final int? userId;
 
   const ServerProfile({
     required this.id,
@@ -52,6 +104,7 @@ class ServerProfile {
     this.token = '',
     this.role = 'viewer',
     this.fullName = '',
+    this.userId,
   });
 
   String get displayName => alias.trim().isEmpty ? cleanUrl : alias.trim();
@@ -69,6 +122,7 @@ class ServerProfile {
     String? token,
     String? role,
     String? fullName,
+    int? userId,
   }) {
     return ServerProfile(
       id: id,
@@ -79,6 +133,7 @@ class ServerProfile {
       token: token ?? this.token,
       role: role ?? this.role,
       fullName: fullName ?? this.fullName,
+      userId: userId ?? this.userId,
     );
   }
 
@@ -91,6 +146,7 @@ class ServerProfile {
         'token': token,
         'role': role,
         'fullName': fullName,
+        if (userId != null) 'user_id': userId,
       };
 
   factory ServerProfile.fromJson(Map<String, dynamic> json) => ServerProfile(
@@ -105,6 +161,7 @@ class ServerProfile {
         token: (json['token'] as String?) ?? '',
         role: (json['role'] as String?) ?? 'viewer',
         fullName: (json['fullName'] as String?) ?? '',
+        userId: (json['user_id'] as num?)?.toInt(),
       );
 
   String encode() => jsonEncode(toJson());

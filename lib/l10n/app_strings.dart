@@ -211,4 +211,22 @@ class AppStrings {
   String get memoryHtopMatch => _t('Đối chiếu RAM (Chuẩn htop & free)', 'RAM Match (htop & free standard)');
   String get diskScanDecisions => _t('Quét phân vùng ổ đĩa', 'Disk partition scan');
   String get close => _t('Đóng', 'Close');
+
+  // -------------------------------------------------------- User Management
+  String get userManagement => _t('Quản lý tài khoản', 'User Management');
+  String get userManagementDesc => _t(
+    'Cập nhật thông tin, thay đổi mật khẩu hoặc đổi quyền',
+    'Update info, change password, or modify role',
+  );
+  String get changePassword => _t('Đổi mật khẩu', 'Change password');
+  String get editUser => _t('Cập nhật người dùng', 'Update user');
+  String get newPassword => _t('Mật khẩu mới', 'New password');
+  String get newPasswordOptional => _t('Mật khẩu mới (bỏ trống nếu không đổi)', 'New password (optional)');
+  String get fullNameOptional => _t('Họ và tên (tuỳ chọn)', 'Full name (optional)');
+  String get usernameOptional => _t('Tên người dùng (tuỳ chọn)', 'Username (optional)');
+  String get roleSelect => _t('Quyền hạn', 'Role');
+  String get updateSuccess => _t('Cập nhật người dùng thành công', 'User updated successfully');
+  String get updatingUser => _t('Đang cập nhật…', 'Updating…');
+  String get targetUserId => _t('Mã ID người dùng', 'User ID');
+  String get saveChanges => _t('Lưu thay đổi', 'Save changes');
 }

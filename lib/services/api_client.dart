@@ -138,6 +138,37 @@ class SysDashApiClient {
     return UserInfo.fromJson(body['user'] as Map<String, dynamic>);
   }
 
+  /// Updates user information, changes password, or modifies role via `PUT /users/:id`.
+  ///
+  /// Requires admin token: `Authorization: Bearer <admin_token>`.
+  /// All request body parameters are optional ([username], [fullName], [password], [role]).
+  Future<UpdateUserResult> updateUser({
+    required int id,
+    String? username,
+    String? fullName,
+    String? password,
+    String? role,
+  }) async {
+    final uri = Uri.parse('$baseUrl/users/$id');
+    final payload = <String, dynamic>{
+      if (username != null && username.isNotEmpty) 'username': username,
+      if (fullName != null && fullName.isNotEmpty) 'full_name': fullName,
+      if (password != null && password.isNotEmpty) 'password': password,
+      if (role != null && role.isNotEmpty) 'role': role,
+    };
+
+    final response = await _httpClient
+        .put(
+          uri,
+          headers: _headers,
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final body = _parseResponse(response);
+    return UpdateUserResult.fromJson(body);
+  }
+
   // ---------------------------------------------------------------------------
   // 2. System & Metrics API
   // ---------------------------------------------------------------------------

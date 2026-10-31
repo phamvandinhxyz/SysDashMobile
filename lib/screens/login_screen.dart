@@ -124,6 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
         token: loginResult.token,
         role: loginResult.user.role,
         fullName: loginResult.user.fullName,
+        userId: loginResult.user.id,
       );
 
       if (_remember) {

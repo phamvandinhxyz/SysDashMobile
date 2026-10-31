@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'l10n/app_strings.dart';
 import 'models/server_models.dart';
@@ -824,6 +825,67 @@ class _ServerControlSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
+                  // User Account & Management (PUT /users/:id)
+                  if (service.client != null) ...[
+                    GlassCard(
+                      borderRadius: 18,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      child: InkWell(
+                        onTap: () {
+                          _openUpdateUserSheet(context, service.client!, service.profile);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Row(
+                          children: [
+                            IconBadge(
+                              icon: Icons.manage_accounts_rounded,
+                              color: SysDashColors.statusEmerald,
+                              size: 34,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        s.userManagement,
+                                        style: TextStyle(
+                                          color: SysDashColors.textPrimary,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      GlassPill(
+                                        text: 'Admin',
+                                        color: SysDashColors.statusEmerald,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    s.userManagementDesc,
+                                    style: TextStyle(
+                                      color: SysDashColors.textSecondary,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: SysDashColors.textSecondary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   // Diagnostics Button (Admin)
                   if (service.client != null) ...[
                     GlassCard(
@@ -1345,6 +1407,635 @@ class _PartitionScanRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+void _openUpdateUserSheet(BuildContext context, SysDashApiClient client, ServerProfile profile) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (ctx) => _UpdateUserSheet(client: client, profile: profile),
+  );
+}
+
+class _UpdateUserSheet extends StatefulWidget {
+  final SysDashApiClient client;
+  final ServerProfile profile;
+
+  const _UpdateUserSheet({
+    required this.client,
+    required this.profile,
+  });
+
+  @override
+  State<_UpdateUserSheet> createState() => _UpdateUserSheetState();
+}
+
+class _UpdateUserSheetState extends State<_UpdateUserSheet> {
+  late final TextEditingController _idController;
+  late final TextEditingController _usernameController;
+  late final TextEditingController _fullNameController;
+  late final TextEditingController _passwordController;
+
+  String _selectedRole = 'admin';
+  bool _obscurePassword = true;
+  bool _loading = false;
+  String? _statusMessage;
+  String? _errorMessage;
+  UserInfo? _updatedUser;
+
+  @override
+  void initState() {
+    super.initState();
+    final defaultId = widget.profile.userId != null
+        ? widget.profile.userId.toString()
+        : '1';
+    _idController = TextEditingController(text: defaultId);
+    _usernameController = TextEditingController(text: widget.profile.username);
+    _fullNameController = TextEditingController(text: widget.profile.fullName);
+    _passwordController = TextEditingController();
+    _selectedRole = widget.profile.role.isNotEmpty ? widget.profile.role : 'admin';
+  }
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    _usernameController.dispose();
+    _fullNameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final s = LanguageScope.of(context);
+    final targetId = int.tryParse(_idController.text.trim());
+    if (targetId == null || targetId <= 0) {
+      setState(() {
+        _errorMessage = s.isVi ? 'ID người dùng không hợp lệ' : 'Invalid user ID';
+      });
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+      _statusMessage = null;
+    });
+
+    final fullName = _fullNameController.text.trim();
+    final password = _passwordController.text.trim();
+
+    try {
+      final result = await widget.client.updateUser(
+        id: targetId,
+        fullName: fullName.isNotEmpty ? fullName : null,
+        password: password.isNotEmpty ? password : null,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _loading = false;
+        _updatedUser = result.user;
+        _statusMessage = result.message.isNotEmpty
+            ? result.message
+            : s.updateSuccess;
+        _passwordController.clear();
+      });
+
+      HapticFeedback.mediumImpact();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = e.toString();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = LanguageScope.of(context);
+    final isDark = SysDashColors.isDark;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
+        ),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xF20B1222) : const Color(0xF2F1F5F9),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(
+            top: BorderSide(color: SysDashColors.glassBorderHighlight, width: 1.2),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: kGlassBlur,
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.25)
+                              : Colors.black.withValues(alpha: 0.20),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Header
+                    Row(
+                      children: [
+                        IconBadge(
+                          icon: Icons.manage_accounts_rounded,
+                          color: SysDashColors.statusEmerald,
+                          size: 38,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    s.editUser,
+                                    style: TextStyle(
+                                      color: SysDashColors.textPrimary,
+                                      fontSize: 16.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GlassPill(text: 'Admin', color: SysDashColors.statusEmerald),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'PUT /users/:id',
+                                style: TextStyle(
+                                  color: SysDashColors.cpuCyan,
+                                  fontSize: 11.5,
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: s.close,
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.close_rounded, color: SysDashColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Success Feedback Card
+                    if (_statusMessage != null && _updatedUser != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: SysDashColors.statusEmerald.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: SysDashColors.statusEmerald.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded,
+                                    color: SysDashColors.statusEmerald, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _statusMessage!,
+                                    style: TextStyle(
+                                      color: SysDashColors.statusEmerald,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'ID: ${_updatedUser!.id} • Username: ${_updatedUser!.username} • Full Name: ${_updatedUser!.fullName} • Role: ${_updatedUser!.role}',
+                              style: TextStyle(
+                                color: SysDashColors.textPrimary,
+                                fontSize: 11.5,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                            if (_updatedUser!.updatedAt != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Updated at: ${_updatedUser!.updatedAt!.toIso8601String()}',
+                                  style: TextStyle(
+                                    color: SysDashColors.textMuted,
+                                    fontSize: 10.5,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Error Feedback Card
+                    if (_errorMessage != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded,
+                                color: Color(0xFFEF4444), size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  color: Color(0xFFEF4444),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Form Container
+                    GlassCard(
+                      borderRadius: 18,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Target User ID field (Disabled / Read-only)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                s.targetUserId,
+                                style: TextStyle(
+                                  color: SysDashColors.textSecondary,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  Icon(Icons.lock_outline_rounded,
+                                      size: 13, color: SysDashColors.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    s.isVi ? 'Cố định' : 'Locked',
+                                    style: TextStyle(
+                                      color: SysDashColors.textMuted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _idController,
+                            readOnly: true,
+                            enabled: false,
+                            style: TextStyle(
+                              color: SysDashColors.textMuted,
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: '1',
+                              prefixIcon: Icon(Icons.tag_rounded, color: SysDashColors.textMuted, size: 20),
+                              isDense: true,
+                              filled: true,
+                              fillColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.02)
+                                  : const Color(0xFFF1F5F9),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: SysDashColors.glassBorderSubtle),
+                              ),
+                              disabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: SysDashColors.glassBorderSubtle),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // New Password field
+                          Text(
+                            s.newPasswordOptional,
+                            style: TextStyle(
+                              color: SysDashColors.textPrimary,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            style: TextStyle(
+                              color: SysDashColors.textPrimary,
+                              fontSize: 13,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'NewPassword456',
+                              prefixIcon: Icon(Icons.lock_outline_rounded,
+                                  color: SysDashColors.ramViolet, size: 20),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: SysDashColors.textSecondary,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
+                              isDense: true,
+                              filled: true,
+                              fillColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: SysDashColors.glassBorderSubtle),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: SysDashColors.glassBorderSubtle),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Full Name field
+                          Text(
+                            s.fullNameOptional,
+                            style: TextStyle(
+                              color: SysDashColors.textPrimary,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _fullNameController,
+                            style: TextStyle(
+                              color: SysDashColors.textPrimary,
+                              fontSize: 13,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Tên Mới',
+                              prefixIcon: Icon(Icons.badge_outlined,
+                                  color: SysDashColors.diskAmber, size: 20),
+                              isDense: true,
+                              filled: true,
+                              fillColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: SysDashColors.glassBorderSubtle),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: SysDashColors.glassBorderSubtle),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Username field (Disabled / Read-only)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                s.username,
+                                style: TextStyle(
+                                  color: SysDashColors.textSecondary,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  Icon(Icons.lock_outline_rounded,
+                                      size: 13, color: SysDashColors.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    s.isVi ? 'Cố định' : 'Locked',
+                                    style: TextStyle(
+                                      color: SysDashColors.textMuted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _usernameController,
+                            readOnly: true,
+                            enabled: false,
+                            style: TextStyle(
+                              color: SysDashColors.textMuted,
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'operator_hn',
+                              prefixIcon: Icon(Icons.person_outline_rounded,
+                                  color: SysDashColors.textMuted, size: 20),
+                              isDense: true,
+                              filled: true,
+                              fillColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.02)
+                                  : const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: SysDashColors.glassBorderSubtle),
+                              ),
+                              disabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: SysDashColors.glassBorderSubtle),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Role display (Disabled / Read-only)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                s.roleSelect,
+                                style: TextStyle(
+                                  color: SysDashColors.textSecondary,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  Icon(Icons.lock_outline_rounded,
+                                      size: 13, color: SysDashColors.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    s.isVi ? 'Cố định' : 'Locked',
+                                    style: TextStyle(
+                                      color: SysDashColors.textMuted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.02)
+                                  : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: SysDashColors.glassBorderSubtle),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.shield_outlined,
+                                  size: 18,
+                                  color: SysDashColors.textMuted,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  _selectedRole.toUpperCase(),
+                                  style: TextStyle(
+                                    color: SysDashColors.textMuted,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12.5,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: SysDashColors.textMuted.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    s.isVi ? 'Không thể thay đổi' : 'Disabled',
+                                    style: TextStyle(
+                                      color: SysDashColors.textMuted,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Submit button
+                    ElevatedButton(
+                      onPressed: _loading ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: SysDashColors.statusEmerald,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _loading
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                              ),
+                            )
+                          : Text(
+                              s.saveChanges,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
