@@ -526,14 +526,51 @@ class _MetricChartCardState extends State<MetricChartCard> {
                   ],
                 ),
               ),
-              Text(
-                formatMetric(nowV, widget.unit),
-                style: TextStyle(
-                  color: widget.accent,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+              if (series.length > 1)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < series.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 2),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: series[i].color,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${series[i].label} ${formatMetric(
+                              series[i].samples.isNotEmpty
+                                  ? series[i].samples.last.value
+                                  : (widget.lines.length > i ? widget.node.value(widget.lines[i].key) : 0.0),
+                              widget.unit,
+                            )}',
+                            style: TextStyle(
+                              color: series[i].color,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                )
+              else
+                Text(
+                  formatMetric(nowV, widget.unit),
+                  style: TextStyle(
+                    color: widget.accent,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -551,18 +588,51 @@ class _MetricChartCardState extends State<MetricChartCard> {
             height: widget.chartHeight,
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (series.length > 1)
-                for (final s in series) _Legend(color: s.color, label: s.label),
-              _StatChip(label: strings.now, value: formatMetric(nowV, widget.unit)),
-              _StatChip(label: strings.avg, value: formatMetric(avgV, widget.unit)),
-              _StatChip(label: strings.peak, value: formatMetric(peakV, widget.unit)),
-            ],
-          ),
+          if (series.length > 1)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < series.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  Builder(
+                    builder: (context) {
+                      final samples = series[i].samples;
+                      final val = widget.lines.length > i ? widget.node.value(widget.lines[i].key) : 0.0;
+                      final sNow = samples.isNotEmpty ? samples.last.value : val;
+                      final sAvg = samples.isNotEmpty
+                          ? samples.map((e) => e.value).reduce((a, b) => a + b) / samples.length
+                          : sNow;
+                      final sPeak = samples.isNotEmpty ? samples.map((e) => e.value).reduce(math.max) : sNow;
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(minWidth: 64),
+                            child: _Legend(color: series[i].color, label: series[i].label),
+                          ),
+                          _StatChip(label: strings.now, value: formatMetric(sNow, widget.unit)),
+                          _StatChip(label: strings.avg, value: formatMetric(sAvg, widget.unit)),
+                          _StatChip(label: strings.peak, value: formatMetric(sPeak, widget.unit)),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ],
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _StatChip(label: strings.now, value: formatMetric(nowV, widget.unit)),
+                _StatChip(label: strings.avg, value: formatMetric(avgV, widget.unit)),
+                _StatChip(label: strings.peak, value: formatMetric(peakV, widget.unit)),
+              ],
+            ),
         ],
       ),
     );

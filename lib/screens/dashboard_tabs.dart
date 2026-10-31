@@ -1024,7 +1024,8 @@ class DisksTab extends StatelessWidget {
           facts: [
             (s.used, formatGb(node.diskUsedGb)),
             (s.free, formatGb(node.diskTotalGb - node.diskUsedGb)),
-            ('${s.read} / ${s.write}', '${formatMetric(node.value(MetricKey.diskRead), 'MB/s', compact: true)} / ${formatMetric(node.value(MetricKey.diskWrite), 'MB/s', compact: true)}'),
+            (s.read, formatMetric(node.value(MetricKey.diskRead), 'MB/s')),
+            (s.write, formatMetric(node.value(MetricKey.diskWrite), 'MB/s')),
           ],
         ),
         if (node.mounts.isNotEmpty)
