@@ -45,6 +45,57 @@ class _FailingConnector extends SshConnector {
   Future<bool> connect(ServerProfile profile) async => false;
 }
 
+ServerNode _createTestNode(ServerProfile profile) => ServerNode(
+      id: 'node-${profile.id}',
+      name: profile.displayName,
+      sshAddress: profile.cleanUrl,
+      osKernel: 'Ubuntu 22.04 LTS (5.15.0-105-generic)',
+      cpuModel: 'Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz',
+      cpuCores: 28,
+      cpuPhysicalCores: 20,
+      cpuLogicalCores: 28,
+      cpuMhz: 3400.0,
+      cpuSpeedGhz: 3.4,
+      ramTotalGb: 32,
+      swapTotalGb: 4,
+      sshPingMs: 6,
+      uptime: const Duration(days: 42, hours: 18, minutes: 12),
+      baseline: const {
+        MetricKey.cpu: 18,
+        MetricKey.cpuTemp: 52,
+        MetricKey.memory: 75,
+        MetricKey.swap: 25,
+        MetricKey.disk: 55,
+        MetricKey.diskRead: 48,
+        MetricKey.diskWrite: 32,
+        MetricKey.netRx: 125,
+        MetricKey.netTx: 84,
+        MetricKey.dockerCpu: 0,
+        MetricKey.dockerMem: 0,
+      },
+      mounts: [
+        DiskMount(mountPoint: '/', device: '/dev/vda1', fileSystem: 'ext4', totalGb: 512, usedGb: 285),
+      ],
+      interfaces: [
+        NetInterface(name: 'eth0', ipv4: '192.168.1.100', mac: '52:54:00:a3:1f:09', rxTotalGb: 1824.6, txTotalGb: 942.1),
+      ],
+      containers: [
+        ContainerInfo(
+          name: 'sysdash-server',
+          image: 'sysdash-server',
+          tag: 'latest',
+          imageId: 'sha256:9f4a81c2',
+          imageSize: '34.2 MB',
+          isRunning: true,
+          ports: '8080/tcp',
+          uptime: '12d',
+          memLimitMb: 512,
+          cpuPercent: 0.8,
+          memMb: 28,
+        ),
+      ],
+    );
+
 void main() {
   testWidgets('Renders SysDashServer LoginScreen and toggles language', (tester) async {
     await tester.pumpWidget(const SysDashApp(connector: _FakeConnector()));
@@ -63,6 +114,35 @@ void main() {
     expect(find.text('SysDash Server Login'), findsOneWidget);
   });
 
+  testWidgets('Displays Cyberpunk loading view when telemetry data is not yet loaded', (tester) async {
+    const profile = ServerProfile(
+      id: 'test-node-load',
+      alias: 'Remote VPS',
+      serverUrl: 'http://10.0.2.2:8080',
+      username: 'admin',
+      password: 'admin123',
+      token: 'fake-jwt-token-123',
+    );
+
+    await tester.pumpWidget(
+      const SysDashApp(
+        initialProfile: profile,
+        connector: _FakeConnector(),
+        initialLoaded: false,
+      ),
+    );
+    await tester.pump();
+
+    // Verify loading indicator and waiting text are visible
+    expect(find.text('Đang tải dữ liệu máy chủ…'), findsOneWidget);
+    expect(find.text('Đang chờ phản hồi số liệu từ máy chủ…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    // Verify tabs and nav bar are NOT rendered yet
+    expect(find.byType(GlassNavBar), findsNothing);
+    expect(find.byType(OverviewTab), findsNothing);
+  });
+
   testWidgets('Signs in and navigates through the 6 glass tabs with time range filters', (
     tester,
   ) async {
@@ -78,9 +158,11 @@ void main() {
     );
 
     await tester.pumpWidget(
-      const SysDashApp(
+      SysDashApp(
         initialProfile: profile,
-        connector: _FakeConnector(),
+        connector: const _FakeConnector(),
+        initialNode: _createTestNode(profile),
+        initialLoaded: true,
       ),
     );
     await tester.pumpAndSettle();
@@ -180,9 +262,11 @@ void main() {
     );
 
     await tester.pumpWidget(
-      const SysDashApp(
+      SysDashApp(
         initialProfile: profile,
-        connector: _FakeConnector(),
+        connector: const _FakeConnector(),
+        initialNode: _createTestNode(profile),
+        initialLoaded: true,
       ),
     );
     await tester.pumpAndSettle();
@@ -279,7 +363,26 @@ void main() {
       "net_bytes_recv": 9823485023,
       "net_upload_rate": 125430.5,
       "net_download_rate": 845210.2,
-      "top_processes": []
+      "top_processes": [
+        {
+          "pid": 28224,
+          "name": "sysdash-server",
+          "cpu_percent": 0.85,
+          "memory_percent": 1.12,
+          "memory_rss": 45900000,
+          "status": "running"
+        }
+      ],
+      "top_memory_processes": [
+        {
+          "pid": 1698,
+          "name": "dockerd",
+          "cpu_percent": 0.40,
+          "memory_percent": 2.14,
+          "memory_rss": 87800000,
+          "status": "running"
+        }
+      ]
     };
 
     const profile = ServerProfile(
@@ -311,6 +414,10 @@ void main() {
     expect(node.interfaces.first.name, 'eth0 / WAN');
     expect(node.interfaces.first.rxTotalGb, closeTo(9.148, 0.01));
     expect(node.interfaces.first.txTotalGb, closeTo(1.350, 0.01));
+    expect(node.topProcesses.length, 1);
+    expect(node.topProcesses.first.name, 'sysdash-server');
+    expect(node.topMemoryProcesses.length, 1);
+    expect(node.topMemoryProcesses.first.name, 'dockerd');
     service.dispose();
   });
 }

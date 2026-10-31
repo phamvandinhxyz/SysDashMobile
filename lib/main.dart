@@ -27,6 +27,8 @@ class SysDashApp extends StatefulWidget {
   final SshConnector? connector;
   final ServerProfile? initialProfile;
   final SysDashApiClient? client;
+  final ServerNode? initialNode;
+  final bool initialLoaded;
 
   const SysDashApp({
     super.key,
@@ -34,6 +36,8 @@ class SysDashApp extends StatefulWidget {
     this.connector,
     this.initialProfile,
     this.client,
+    this.initialNode,
+    this.initialLoaded = false,
   });
 
   @override
@@ -73,7 +77,12 @@ class _SysDashAppState extends State<SysDashApp> {
             : null);
     setState(() {
       _activeProfile = profile;
-      _telemetry = TelemetryService(profile: profile, client: client);
+      _telemetry = TelemetryService(
+        profile: profile,
+        client: client,
+        initialNode: widget.initialNode,
+        isLoaded: widget.initialLoaded,
+      );
     });
   }
 
@@ -176,130 +185,266 @@ class _DashboardShellState extends State<DashboardShell> {
   @override
   Widget build(BuildContext context) {
     final s = LanguageScope.of(context);
-    final nodes = widget.service.nodes;
-    if (_selectedNodeIndex >= nodes.length) _selectedNodeIndex = 0;
-    final activeNode = nodes[_selectedNodeIndex];
 
-    final navItems = [
-      GlassNavItem(
-        icon: Icons.dashboard_outlined,
-        activeIcon: Icons.dashboard_rounded,
-        label: s.tabOverview,
-        accent: SysDashColors.statusEmerald,
-      ),
-      const GlassNavItem(
-        icon: Icons.memory_outlined,
-        activeIcon: Icons.memory_rounded,
-        label: 'CPU',
-        accent: SysDashColors.cpuCyan,
-      ),
-      GlassNavItem(
-        icon: Icons.developer_board_outlined,
-        activeIcon: Icons.developer_board_rounded,
-        label: s.tabMemory,
-        accent: SysDashColors.ramViolet,
-      ),
-      GlassNavItem(
-        icon: Icons.storage_outlined,
-        activeIcon: Icons.storage_rounded,
-        label: s.tabDisks,
-        accent: SysDashColors.diskAmber,
-      ),
-      GlassNavItem(
-        icon: Icons.swap_vert_outlined,
-        activeIcon: Icons.swap_vert_rounded,
-        label: s.tabNetwork,
-        accent: SysDashColors.netIndigo,
-      ),
-      const GlassNavItem(
-        icon: Icons.layers_outlined,
-        activeIcon: Icons.layers_rounded,
-        label: 'Docker',
-        accent: SysDashColors.netIndigo,
-      ),
-    ];
+    return AnimatedBuilder(
+      animation: widget.service,
+      builder: (context, _) {
+        if (!widget.service.isLoaded) {
+          return _buildLoading(context, s);
+        }
 
+        final nodes = widget.service.nodes;
+        if (_selectedNodeIndex >= nodes.length) _selectedNodeIndex = 0;
+        final activeNode = nodes[_selectedNodeIndex];
+
+        final navItems = [
+          GlassNavItem(
+            icon: Icons.dashboard_outlined,
+            activeIcon: Icons.dashboard_rounded,
+            label: s.tabOverview,
+            accent: SysDashColors.statusEmerald,
+          ),
+          const GlassNavItem(
+            icon: Icons.memory_outlined,
+            activeIcon: Icons.memory_rounded,
+            label: 'CPU',
+            accent: SysDashColors.cpuCyan,
+          ),
+          GlassNavItem(
+            icon: Icons.developer_board_outlined,
+            activeIcon: Icons.developer_board_rounded,
+            label: s.tabMemory,
+            accent: SysDashColors.ramViolet,
+          ),
+          GlassNavItem(
+            icon: Icons.storage_outlined,
+            activeIcon: Icons.storage_rounded,
+            label: s.tabDisks,
+            accent: SysDashColors.diskAmber,
+          ),
+          GlassNavItem(
+            icon: Icons.swap_vert_outlined,
+            activeIcon: Icons.swap_vert_rounded,
+            label: s.tabNetwork,
+            accent: SysDashColors.netIndigo,
+          ),
+          const GlassNavItem(
+            icon: Icons.layers_outlined,
+            activeIcon: Icons.layers_rounded,
+            label: 'Docker',
+            accent: SysDashColors.netIndigo,
+          ),
+        ];
+
+        return Scaffold(
+          backgroundColor: SysDashColors.bgPrimary,
+          body: Stack(
+            children: [
+              const Positioned.fill(child: AmbientBackground()),
+              SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    // Floating Dynamic Island Server Pill at Top
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SysDashAppIcon(size: 20, borderRadius: 5),
+                              SizedBox(width: 8),
+                              Text(
+                                'SysDash',
+                                style: TextStyle(
+                                  color: SysDashColors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          _ServerDynamicPill(
+                            activeNode: activeNode,
+                            profile: widget.profile,
+                            service: widget.service,
+                            onTap: () => _openServerControlSheet(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: (index) {
+                          setState(() => _currentTab = index);
+                        },
+                        children: [
+                          OverviewTab(
+                            service: widget.service,
+                            selectedIndex: _selectedNodeIndex,
+                            onSelectNode: (i) => setState(() => _selectedNodeIndex = i),
+                            onOpenTab: _onTabSelected,
+                          ),
+                          CpuTab(service: widget.service, node: activeNode),
+                          MemoryTab(service: widget.service, node: activeNode),
+                          DisksTab(service: widget.service, node: activeNode),
+                          NetworkTab(service: widget.service, node: activeNode),
+                          ContainersTab(service: widget.service, node: activeNode),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 16,
+                child: SafeArea(
+                  top: false,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 620),
+                      child: GlassNavBar(
+                        items: navItems,
+                        currentIndex: _currentTab,
+                        pageController: _pageController,
+                        onTap: _onTabSelected,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoading(BuildContext context, AppStrings s) {
+    final isConnected = widget.service.isConnectedToServer;
     return Scaffold(
       backgroundColor: SysDashColors.bgPrimary,
       body: Stack(
         children: [
           const Positioned.fill(child: AmbientBackground()),
           SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                // Floating Dynamic Island Server Pill at Top
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: GlassCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+                  borderRadius: 24,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Row(
-                        mainAxisSize: MainAxisSize.min,
+                      Stack(
+                        alignment: Alignment.center,
                         children: [
-                          SysDashAppIcon(size: 20, borderRadius: 5),
-                          SizedBox(width: 8),
-                          Text(
-                            'SysDash',
-                            style: TextStyle(
-                              color: SysDashColors.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
+                          SizedBox(
+                            width: 76,
+                            height: 76,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3.5,
+                              valueColor: const AlwaysStoppedAnimation<Color>(SysDashColors.cpuCyan),
+                              backgroundColor: SysDashColors.cpuCyan.withValues(alpha: 0.15),
                             ),
                           ),
+                          const SysDashAppIcon(size: 40, borderRadius: 10),
                         ],
                       ),
-                      _ServerDynamicPill(
-                        activeNode: activeNode,
-                        profile: widget.profile,
-                        service: widget.service,
-                        onTap: () => _openServerControlSheet(context),
+                      const SizedBox(height: 24),
+                      Text(
+                        s.loadingTelemetry,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: SysDashColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        s.waitingForData,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: SysDashColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: SysDashColors.glassBorderSubtle),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isConnected
+                                    ? SysDashColors.statusEmerald
+                                    : SysDashColors.diskAmber,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (isConnected
+                                            ? SysDashColors.statusEmerald
+                                            : SysDashColors.diskAmber)
+                                        .withValues(alpha: 0.6),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                '${widget.profile.displayName} (${widget.profile.cleanUrl})',
+                                style: const TextStyle(
+                                  color: SysDashColors.textMuted,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      TextButton.icon(
+                        onPressed: widget.onLogout,
+                        icon: const Icon(Icons.arrow_back_rounded, size: 16, color: SysDashColors.textMuted),
+                        label: Text(
+                          s.logout,
+                          style: const TextStyle(
+                            color: SysDashColors.textMuted,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                          backgroundColor: Colors.white.withValues(alpha: 0.04),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: SysDashColors.glassBorderSubtle),
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                ),
-                Expanded(
-                  child: AnimatedBuilder(
-                    animation: widget.service,
-                    builder: (context, _) => PageView(
-                      controller: _pageController,
-                      onPageChanged: (index) {
-                        setState(() => _currentTab = index);
-                      },
-                      children: [
-                        OverviewTab(
-                          service: widget.service,
-                          selectedIndex: _selectedNodeIndex,
-                          onSelectNode: (i) => setState(() => _selectedNodeIndex = i),
-                          onOpenTab: _onTabSelected,
-                        ),
-                        CpuTab(service: widget.service, node: activeNode),
-                        MemoryTab(service: widget.service, node: activeNode),
-                        DisksTab(service: widget.service, node: activeNode),
-                        NetworkTab(service: widget.service, node: activeNode),
-                        ContainersTab(service: widget.service, node: activeNode),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: SafeArea(
-              top: false,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 620),
-                  child: GlassNavBar(
-                    items: navItems,
-                    currentIndex: _currentTab,
-                    pageController: _pageController,
-                    onTap: _onTabSelected,
                   ),
                 ),
               ),

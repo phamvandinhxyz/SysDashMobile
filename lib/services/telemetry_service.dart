@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
@@ -10,12 +9,11 @@ import 'api_client.dart';
 
 /// Telemetry service connected to SysDashServer (Golang backend) via WebSocket
 /// (`/api/v1/ws/metrics?token=...`) and REST API (`/api/v1/metrics/...`),
-/// with automatic polling and smooth offline fallback.
+/// with automatic polling and real-time streaming.
 class TelemetryService extends ChangeNotifier {
   final ServerProfile profile;
   final SysDashApiClient? client;
   final List<ServerNode> nodes;
-  final math.Random _rng = math.Random();
   final Map<String, List<TimedSample>> _historyCache = {};
 
   Timer? _localTimer;
@@ -25,18 +23,20 @@ class TelemetryService extends ChangeNotifier {
   StreamSubscription? _wsSub;
   bool _isLive = true;
   bool _isConnectedToServer = false;
+  bool _isLoaded = false;
   bool _isDisposed = false;
 
   bool get isLive => _isLive;
   bool get isConnectedToServer => _isConnectedToServer;
+  bool get isLoaded => _isLoaded;
 
   TelemetryService({
     required this.profile,
     this.client,
-  }) : nodes = _MockFleet.build(profile) {
-    for (final node in nodes) {
-      _seedLiveBuffers(node);
-    }
+    ServerNode? initialNode,
+    bool isLoaded = false,
+  })  : _isLoaded = isLoaded || initialNode != null,
+        nodes = [initialNode ?? ServerNode.createEmpty(profile)] {
     _initConnection();
   }
 
@@ -55,15 +55,11 @@ class TelemetryService extends ChangeNotifier {
       return _historyCache[cacheKey]!;
     }
 
-    // Generate immediate fallback and trigger background server fetch
-    final fallback = _generateHistory(node, key, range);
-    _historyCache[cacheKey] = fallback;
-
     if (client != null && node.id == nodes.first.id) {
       _fetchServerHistory(node, key, range, cacheKey);
     }
 
-    return fallback;
+    return const [];
   }
 
   Future<void> _fetchServerHistory(
@@ -117,12 +113,22 @@ class TelemetryService extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   void _initConnection() {
+    _startUptimeTicker();
     if (client != null && profile.token.isNotEmpty) {
       _fetchInitialServerData();
       _connectWebSocket();
-    } else {
-      _startLocalTicker();
     }
+  }
+
+  void _startUptimeTicker() {
+    _localTimer?.cancel();
+    _localTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!_isLive || !_isLoaded) return;
+      for (final node in nodes) {
+        node.uptime += const Duration(seconds: 1);
+      }
+      notifyListeners();
+    });
   }
 
   void _applyHostInfo(Map<String, dynamic> sysInfo) {
@@ -180,6 +186,7 @@ class TelemetryService extends ChangeNotifier {
           nodes[0].containers
             ..clear()
             ..addAll(containers);
+          _updateDockerLiveBuffers(nodes[0]);
         }
       } catch (_) {}
 
@@ -239,12 +246,7 @@ class TelemetryService extends ChangeNotifier {
   }
 
   void _startRestPollingTicker() {
-    if (_isDisposed) return;
-    if (client == null) {
-      _startLocalTicker();
-      return;
-    }
-    _localTimer?.cancel();
+    if (_isDisposed || client == null) return;
     _restPollTimer?.cancel();
     _dockerPollTimer?.cancel();
 
@@ -276,6 +278,7 @@ class TelemetryService extends ChangeNotifier {
           nodes[0].dockerImages
             ..clear()
             ..addAll(images);
+          _updateDockerLiveBuffers(nodes[0]);
           notifyListeners();
         }
       } catch (_) {}
@@ -290,6 +293,7 @@ class TelemetryService extends ChangeNotifier {
   }
 
   void _handleServerSnapshot(Map<String, dynamic> json) {
+    _isLoaded = true;
     DateTime now = DateTime.now();
     final rawTs = json['timestamp'] as String?;
     if (rawTs != null && rawTs.isNotEmpty) {
@@ -452,7 +456,7 @@ class TelemetryService extends ChangeNotifier {
         );
     }
 
-    // Update top processes
+    // Update top CPU processes
     final topProc = json['top_processes'] as List<dynamic>?;
     if (topProc != null) {
       final procs = topProc
@@ -463,97 +467,39 @@ class TelemetryService extends ChangeNotifier {
         ..addAll(procs);
     }
 
+    // Update top memory processes
+    final topMemProc = json['top_memory_processes'] as List<dynamic>?;
+    if (topMemProc != null) {
+      final memProcs = topMemProc
+          .map((e) => SystemProcessItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+      primaryNode.topMemoryProcesses
+        ..clear()
+        ..addAll(memProcs);
+    }
+
     notifyListeners();
   }
 
   @visibleForTesting
   void handleSnapshotForTest(Map<String, dynamic> json) => _handleServerSnapshot(json);
 
-  void _startLocalTicker() {
-    if (_isDisposed) return;
-    _localTimer?.cancel();
-    _localTimer = Timer.periodic(TimeRange.live.step, (_) => _tickLocal());
-  }
-
-  void _tickLocal() {
-    if (!_isLive) return;
+  void _updateDockerLiveBuffers(ServerNode node) {
     final now = DateTime.now();
-    for (final node in nodes) {
-      for (final key in MetricKey.values) {
-        final next = _step(node.value(key), node.baseline[key] ?? 30.0, MetricSpec.of(key));
-        node.current[key] = next;
-        final buffer = node.live[key]!..add(TimedSample(now, next));
-        if (buffer.length > TimeRange.live.points) buffer.removeAt(0);
-      }
+    final cpuVal = node.totalDockerCpuPercent;
+    final memVal = node.totalDockerMemPercent;
 
-      final cpu = node.value(MetricKey.cpu);
-      for (var i = 0; i < node.coreLoads.length; i++) {
-        final target = cpu + (_rng.nextDouble() * 2 - 1) * 18;
-        node.coreLoads[i] = (node.coreLoads[i] * 0.4 + target * 0.6).clamp(0, 100);
-      }
+    node.current[MetricKey.dockerCpu] = cpuVal;
+    node.current[MetricKey.dockerMem] = memVal;
 
-      for (final c in node.containers.where((c) => c.isRunning)) {
-        c.cpuPercent = (c.cpuPercent + (_rng.nextDouble() * 2 - 1) * 1.5).clamp(0.1, 95);
-        c.memMb = (c.memMb + (_rng.nextDouble() * 2 - 1) * c.memLimitMb * 0.004)
-            .clamp(4, c.memLimitMb);
-      }
+    void pushDocker(MetricKey key, double val) {
+      final buf = node.live[key] ??= [];
+      buf.add(TimedSample(now, val));
+      if (buf.length > TimeRange.live.points) buf.removeAt(0);
     }
-    notifyListeners();
-  }
 
-  void _seedLiveBuffers(ServerNode node) {
-    final now = DateTime.now();
-    const r = TimeRange.live;
-    for (final key in MetricKey.values) {
-      final spec = MetricSpec.of(key);
-      var v = node.baseline[key] ?? 30.0;
-      node.live[key] = List.generate(r.points, (i) {
-        v = _step(v, node.baseline[key] ?? 30.0, spec);
-        return TimedSample(now.subtract(r.step * (r.points - 1 - i)), v);
-      });
-      node.current[key] = v;
-    }
-  }
-
-  double _step(double v, double baseline, MetricSpec spec) {
-    final noise = (_rng.nextDouble() * 2 - 1) * spec.volatility;
-    final spike = spec.spiky && _rng.nextDouble() < 0.05
-        ? spec.volatility * (3 + _rng.nextDouble() * 4)
-        : 0.0;
-    final reverted = v + (baseline - v) * 0.12 + noise + spike;
-    return reverted.clamp(spec.min, spec.max).toDouble();
-  }
-
-  List<TimedSample> _generateHistory(ServerNode node, MetricKey key, TimeRange range) {
-    final spec = MetricSpec.of(key);
-    final rng = math.Random(Object.hash(node.id, key.index, range.index));
-    final now = DateTime.now();
-    final base = node.baseline[key] ?? 30.0;
-    var walk = 0.0;
-
-    return List.generate(range.points, (i) {
-      final t = now.subtract(range.step * (range.points - 1 - i));
-      final hour = t.hour + t.minute / 60.0;
-      final daily = math.sin((hour - 8) / 24 * 2 * math.pi);
-      walk = walk * 0.8 + (rng.nextDouble() * 2 - 1) * spec.volatility;
-
-      double v;
-      if (key == MetricKey.disk) {
-        final progress = i / (range.points - 1);
-        final growth = switch (range) {
-          TimeRange.day30 => 6.0,
-          TimeRange.week1 => 1.8,
-          _ => 0.3,
-        };
-        v = base - growth * (1 - progress) + walk;
-      } else {
-        v = base + daily * spec.dailyAmplitude + walk;
-        if (spec.spiky && rng.nextDouble() < 0.04) {
-          v += spec.volatility * (3 + rng.nextDouble() * 5);
-        }
-      }
-      return TimedSample(t, v.clamp(spec.min, spec.max).toDouble());
-    });
+    pushDocker(MetricKey.dockerCpu, cpuVal);
+    pushDocker(MetricKey.dockerMem, memVal);
   }
 
   @override
@@ -593,50 +539,4 @@ class SshConnector {
       return false;
     }
   }
-}
-
-class _MockFleet {
-  static List<ServerNode> build(ServerProfile profile) => [
-        ServerNode(
-          id: 'node-${profile.id}',
-          name: profile.displayName,
-          sshAddress: profile.cleanUrl,
-          osKernel: 'Microsoft Windows 11 Pro • 25H2',
-          cpuModel: 'Intel(R) Core(TM) i7-14700K',
-          cpuCores: 28,
-          cpuPhysicalCores: 20,
-          cpuLogicalCores: 28,
-          cpuMhz: 3400.0,
-          cpuSpeedGhz: 3.4,
-          ramTotalGb: 32,
-          swapTotalGb: 4,
-          sshPingMs: 6,
-          uptime: const Duration(days: 42, hours: 18, minutes: 12),
-          baseline: const {
-            MetricKey.cpu: 18,
-            MetricKey.cpuTemp: 52,
-            MetricKey.memory: 75,
-            MetricKey.swap: 25,
-            MetricKey.disk: 55,
-            MetricKey.diskRead: 48,
-            MetricKey.diskWrite: 32,
-            MetricKey.netRx: 125,
-            MetricKey.netTx: 84,
-            MetricKey.dockerCpu: 24,
-            MetricKey.dockerMem: 38,
-          },
-          mounts: [
-            DiskMount(mountPoint: 'C:', device: 'C:', fileSystem: 'NTFS', totalGb: 512, usedGb: 285),
-            DiskMount(mountPoint: 'E:', device: 'E:', fileSystem: 'NTFS', totalGb: 1024, usedGb: 420),
-          ],
-          interfaces: [
-            NetInterface(name: 'Ethernet', ipv4: '192.168.1.100', mac: '52:54:00:a3:1f:09', rxTotalGb: 1824.6, txTotalGb: 942.1),
-          ],
-          containers: [
-            ContainerInfo(name: 'sysdash-server', image: 'sysdash-server', tag: 'latest', imageId: 'sha256:9f4a81c2', imageSize: '34.2 MB', isRunning: true, ports: '8080/tcp', uptime: '12d', memLimitMb: 512, cpuPercent: 0.8, memMb: 28),
-            ContainerInfo(name: 'nginx-proxy', image: 'nginx', tag: 'alpine', imageId: 'sha256:4c1b30e9', imageSize: '23.6 MB', isRunning: true, ports: '80, 443', uptime: '12d', memLimitMb: 256, cpuPercent: 3.2, memMb: 42),
-            ContainerInfo(name: 'postgres-db', image: 'postgres', tag: '16-alpine', imageId: 'sha256:7d2e19a0', imageSize: '185.4 MB', isRunning: true, ports: '5432', uptime: '30d', memLimitMb: 4096, cpuPercent: 12.4, memMb: 1240),
-          ],
-        ),
-      ];
 }

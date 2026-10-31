@@ -65,6 +65,8 @@ class AppStrings {
   String get stopped => _t('Đã dừng', 'Stopped');
   String get sshConnected => _t('Đã kết nối API', 'API Connected');
   String get nodes => _t('Máy chủ', 'Nodes');
+  String get loadingTelemetry => _t('Đang tải dữ liệu máy chủ…', 'Loading server telemetry…');
+  String get waitingForData => _t('Đang chờ phản hồi số liệu từ máy chủ…', 'Waiting for initial metrics from server…');
 
   // ------------------------------------------------------------------ Login
   String get loginTitle => _t('Đăng nhập SysDash Server', 'SysDash Server Login');
@@ -191,6 +193,7 @@ class AppStrings {
 
   // -------------------------------------------------------------- Processes
   String get topProcesses => _t('Top tiến trình hệ thống', 'Top system processes');
+  String get topMemoryProcesses => _t('Top tiến trình chiếm RAM', 'Top memory processes');
   String get pid => 'PID';
   String get processName => _t('Tên tiến trình', 'Process name');
 

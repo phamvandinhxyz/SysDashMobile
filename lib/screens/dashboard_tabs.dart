@@ -646,10 +646,12 @@ class CpuTab extends StatelessWidget {
 
 class _ProcessRow extends StatelessWidget {
   final SystemProcessItem proc;
-  const _ProcessRow({required this.proc});
+  final bool highlightMemory;
+  const _ProcessRow({required this.proc, this.highlightMemory = false});
 
   @override
   Widget build(BuildContext context) {
+    final badgeColor = highlightMemory ? SysDashColors.ramViolet : SysDashColors.cpuCyan;
     return Row(
       children: [
         Container(
@@ -683,7 +685,9 @@ class _ProcessRow extends StatelessWidget {
                 ),
               ),
               Text(
-                'RAM: ${formatMb(proc.memoryRss / (1024 * 1024))} (${proc.memoryPercent.toStringAsFixed(1)}%)',
+                highlightMemory
+                    ? 'CPU: ${proc.cpuPercent.toStringAsFixed(1)}%'
+                    : 'RAM: ${formatMb(proc.memoryRss / (1024 * 1024))} (${proc.memoryPercent.toStringAsFixed(1)}%)',
                 style: const TextStyle(
                   color: SysDashColors.textSecondary,
                   fontSize: 11,
@@ -695,13 +699,15 @@ class _ProcessRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: SysDashColors.cpuCyan.withValues(alpha: 0.15),
+            color: badgeColor.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            'CPU ${proc.cpuPercent.toStringAsFixed(1)}%',
-            style: const TextStyle(
-              color: SysDashColors.cpuCyan,
+            highlightMemory
+                ? 'RAM ${formatMb(proc.memoryRss / (1024 * 1024))} (${proc.memoryPercent.toStringAsFixed(1)}%)'
+                : 'CPU ${proc.cpuPercent.toStringAsFixed(1)}%',
+            style: TextStyle(
+              color: badgeColor,
               fontFamily: 'monospace',
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -845,6 +851,28 @@ class MemoryTab extends StatelessWidget {
             ),
           ],
         ),
+        if (node.topMemoryProcesses.isNotEmpty)
+          GlassCard(
+            glowColor: SysDashColors.ramViolet,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionHeader(
+                  title: s.topMemoryProcesses,
+                  badge: '${node.topMemoryProcesses.length} proc',
+                  accent: SysDashColors.ramViolet,
+                ),
+                for (var i = 0; i < node.topMemoryProcesses.length; i++) ...[
+                  if (i > 0)
+                    Divider(height: 18, color: Colors.white.withValues(alpha: 0.08)),
+                  _ProcessRow(
+                    proc: node.topMemoryProcesses[i],
+                    highlightMemory: true,
+                  ),
+                ],
+              ],
+            ),
+          ),
       ],
     );
   }

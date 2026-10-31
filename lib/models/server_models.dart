@@ -651,6 +651,7 @@ class ServerNode {
   final List<ContainerInfo> containers;
   final List<DockerImageItem> dockerImages;
   final List<SystemProcessItem> topProcesses;
+  final List<SystemProcessItem> topMemoryProcesses;
 
   /// Baseline means.
   final Map<MetricKey, double> baseline;
@@ -697,14 +698,58 @@ class ServerNode {
     List<DockerImageItem>? dockerImages,
     required this.baseline,
     List<SystemProcessItem>? topProcesses,
+    List<SystemProcessItem>? topMemoryProcesses,
   })  : dockerImages = dockerImages != null ? List.of(dockerImages) : [],
         topProcesses = topProcesses != null ? List.of(topProcesses) : [],
+        topMemoryProcesses = topMemoryProcesses != null ? List.of(topMemoryProcesses) : [],
         current = Map.of(baseline),
         coreLoads = List.filled(
-          cpuLogicalCores ?? cpuCores,
-          baseline[MetricKey.cpu] ?? 20,
+          cpuLogicalCores ?? (cpuCores > 0 ? cpuCores : 1),
+          baseline[MetricKey.cpu] ?? 0,
           growable: true,
-        );
+        ) {
+    for (final key in MetricKey.values) {
+      live[key] = [];
+    }
+  }
+
+  factory ServerNode.createEmpty(ServerProfile profile) => ServerNode(
+        id: 'node-${profile.id}',
+        name: profile.displayName.isNotEmpty ? profile.displayName : 'Server',
+        sshAddress: profile.cleanUrl,
+        osKernel: '—',
+        cpuModel: '—',
+        cpuCores: 1,
+        cpuPhysicalCores: 1,
+        cpuLogicalCores: 1,
+        cpuMhz: 0,
+        cpuSpeedGhz: 0,
+        ramTotalGb: 0,
+        swapTotalGb: 0,
+        ramUsedGb: 0,
+        swapUsedGb: 0,
+        sshPingMs: 0,
+        uptime: Duration.zero,
+        baseline: const {
+          MetricKey.cpu: 0,
+          MetricKey.cpuTemp: 0,
+          MetricKey.memory: 0,
+          MetricKey.swap: 0,
+          MetricKey.disk: 0,
+          MetricKey.diskRead: 0,
+          MetricKey.diskWrite: 0,
+          MetricKey.netRx: 0,
+          MetricKey.netTx: 0,
+          MetricKey.dockerCpu: 0,
+          MetricKey.dockerMem: 0,
+        },
+        mounts: [],
+        interfaces: [],
+        containers: [],
+        dockerImages: [],
+        topProcesses: [],
+        topMemoryProcesses: [],
+      );
 
   int get physicalCores => cpuPhysicalCores ?? (cpuLogicalCores != null ? (cpuLogicalCores! * 0.7).round() : cpuCores);
   int get logicalCores => cpuLogicalCores ?? cpuCores;
@@ -722,7 +767,12 @@ class ServerNode {
   double get totalDockerImageSizeGb =>
       dockerImages.fold(0.0, (sum, img) => sum + img.sizeGb);
   double get totalDockerMemUsageMb =>
-      dockerImages.fold(0.0, (sum, img) => sum + img.memMb);
+      containers.where((c) => c.isRunning).fold(0.0, (sum, c) => sum + c.memMb);
+  double get totalDockerCpuPercent =>
+      containers.where((c) => c.isRunning).fold(0.0, (sum, c) => sum + c.cpuPercent);
+  double get totalDockerMemPercent => ramTotalGb > 0
+      ? (totalDockerMemUsageMb / (ramTotalGb * 1024) * 100).clamp(0.0, 100.0)
+      : 0.0;
 
   String get uptimeLabel {
     final d = uptime.inDays;
@@ -732,10 +782,11 @@ class ServerNode {
   }
 
   String get loadAverage {
-    final l1 = value(MetricKey.cpu) / 100 * cpuCores;
-    final base = baseline[MetricKey.cpu] ?? 20.0;
-    final l5 = base / 100 * cpuCores * 1.05;
-    final l15 = base / 100 * cpuCores * 0.92;
+    final cores = cpuCores > 0 ? cpuCores : 1;
+    final l1 = value(MetricKey.cpu) / 100 * cores;
+    final base = baseline[MetricKey.cpu] ?? value(MetricKey.cpu);
+    final l5 = base / 100 * cores * 1.05;
+    final l15 = base / 100 * cores * 0.92;
     return '${l1.toStringAsFixed(2)}  ${l5.toStringAsFixed(2)}  ${l15.toStringAsFixed(2)}';
   }
 }

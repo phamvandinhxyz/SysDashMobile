@@ -488,11 +488,12 @@ class _MetricChartCardState extends State<MetricChartCard> {
           samples: widget.service.series(widget.node, l.key, _range),
         ),
     ];
-    final primary = series.first.samples;
+    final primary = series.isNotEmpty ? series.first.samples : const <TimedSample>[];
     final values = primary.map((e) => e.value);
-    final nowV = primary.last.value;
-    final avgV = values.reduce((a, b) => a + b) / primary.length;
-    final peakV = values.reduce(math.max);
+    final fallbackVal = widget.lines.isNotEmpty ? widget.node.value(widget.lines.first.key) : 0.0;
+    final nowV = primary.isNotEmpty ? primary.last.value : fallbackVal;
+    final avgV = primary.isNotEmpty ? values.reduce((a, b) => a + b) / primary.length : nowV;
+    final peakV = primary.isNotEmpty ? values.reduce(math.max) : nowV;
 
     return GlassCard(
       glowColor: widget.accent,
