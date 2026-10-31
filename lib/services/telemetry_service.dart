@@ -68,7 +68,25 @@ class TelemetryService extends ChangeNotifier {
   })  : _isLoaded = isLoaded || initialNode != null,
         _isDockerLoaded = isDockerLoaded ?? (initialNode != null || client == null),
         nodes = [initialNode ?? ServerNode.createEmpty(profile)] {
+    _seedInitialLiveBuffers();
     _initConnection();
+  }
+
+  void _seedInitialLiveBuffers() {
+    final now = DateTime.now();
+    for (final node in nodes) {
+      if ((node.current[MetricKey.disk] == null || node.current[MetricKey.disk] == 0.0) && node.diskTotalGb > 0) {
+        node.current[MetricKey.disk] = (node.diskUsedGb / node.diskTotalGb * 100);
+      }
+      for (final key in MetricKey.values) {
+        final buf = node.live[key];
+        if (buf != null && buf.isEmpty) {
+          final val = node.current[key] ?? node.baseline[key] ?? 0.0;
+          buf.add(TimedSample(now.subtract(const Duration(seconds: 2)), val));
+          buf.add(TimedSample(now, val));
+        }
+      }
+    }
   }
 
   void toggleLive() {
@@ -119,6 +137,20 @@ class TelemetryService extends ChangeNotifier {
             break;
           case MetricKey.disk:
             val = (r['disk_percent'] as num?)?.toDouble() ?? 0.0;
+            break;
+          case MetricKey.diskRead:
+            val = ((r['disk_read_rate'] as num?)?.toDouble() ??
+                    (r['disk_read_bytes_sec'] as num?)?.toDouble() ??
+                    (r['disk_read'] as num?)?.toDouble() ??
+                    0.0) /
+                (1024 * 1024);
+            break;
+          case MetricKey.diskWrite:
+            val = ((r['disk_write_rate'] as num?)?.toDouble() ??
+                    (r['disk_write_bytes_sec'] as num?)?.toDouble() ??
+                    (r['disk_write'] as num?)?.toDouble() ??
+                    0.0) /
+                (1024 * 1024);
             break;
           case MetricKey.netRx:
             val = ((r['net_download_rate'] as num?)?.toDouble() ?? 0.0) / (1024 * 1024 / 8);
@@ -519,6 +551,32 @@ class TelemetryService extends ChangeNotifier {
         );
       }
     }
+
+    // Disk usage percentage & I/O
+    final diskPercent = (json['disk_percent'] as num?)?.toDouble() ??
+        (json['disk_used_percent'] as num?)?.toDouble() ??
+        (primaryNode.diskTotalGb > 0
+            ? (primaryNode.diskUsedGb / primaryNode.diskTotalGb * 100)
+            : (primaryNode.mounts.isNotEmpty ? primaryNode.mounts.first.percent : 0.0));
+
+    final diskReadBytes = (json['disk_read_rate'] as num?)?.toDouble() ??
+        (json['disk_read_bytes_sec'] as num?)?.toDouble() ??
+        (json['disk_read'] as num?)?.toDouble() ??
+        0.0;
+    final diskWriteBytes = (json['disk_write_rate'] as num?)?.toDouble() ??
+        (json['disk_write_bytes_sec'] as num?)?.toDouble() ??
+        (json['disk_write'] as num?)?.toDouble() ??
+        0.0;
+    final diskReadMbps = diskReadBytes > 1024 * 1024 ? diskReadBytes / (1024 * 1024) : diskReadBytes;
+    final diskWriteMbps = diskWriteBytes > 1024 * 1024 ? diskWriteBytes / (1024 * 1024) : diskWriteBytes;
+
+    primaryNode.current[MetricKey.disk] = diskPercent;
+    primaryNode.current[MetricKey.diskRead] = diskReadMbps;
+    primaryNode.current[MetricKey.diskWrite] = diskWriteMbps;
+
+    pushLive(MetricKey.disk, diskPercent);
+    pushLive(MetricKey.diskRead, diskReadMbps);
+    pushLive(MetricKey.diskWrite, diskWriteMbps);
 
     // Update network interfaces from `net_bytes_recv` & `net_bytes_sent`
     final netBytesRecv = (json['net_bytes_recv'] as num?)?.toDouble();

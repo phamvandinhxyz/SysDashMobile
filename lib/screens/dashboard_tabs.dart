@@ -253,8 +253,8 @@ class OverviewTab extends StatelessWidget {
                       ? '${node.mounts.first.usedFormatted} / ${node.mounts.first.totalFormatted}'
                       : '${formatGb(node.diskUsedGb)} / ${formatGb(node.diskTotalGb)}',
                   color: SysDashColors.diskAmber,
-                  samples: node.live[MetricKey.diskRead]!,
-                  sparkMax: 400,
+                  samples: node.live[MetricKey.disk]!,
+                  sparkMax: 100,
                   onTap: () => onOpenTab(3),
                 ),
                 _ResourceTile(
@@ -1013,7 +1013,7 @@ class DisksTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = LanguageScope.of(context);
-    final pct = node.diskUsedGb / node.diskTotalGb * 100;
+    final pct = node.diskTotalGb > 0 ? (node.diskUsedGb / node.diskTotalGb * 100) : node.value(MetricKey.disk);
     return TabScroll(
       children: [
         _HeroCard(
