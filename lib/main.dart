@@ -333,6 +333,7 @@ class _DashboardShellState extends State<DashboardShell> {
       profile: widget.profile,
       isConnected: widget.service.isConnectedToServer,
       onLogout: widget.onLogout,
+      initialTab: _currentTab,
     );
   }
 

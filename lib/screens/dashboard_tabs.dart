@@ -627,21 +627,27 @@ class CpuTab extends StatelessWidget {
                 title: s.perCore,
                 badge: '${node.physicalCores} ${s.cores} • ${node.logicalCores} ${s.threads}',
               ),
-              ResponsiveGrid(
-                minItemWidth: 140,
-                maxColumns: 4,
-                spacing: 12,
-                children: [
-                  for (var i = 0; i < node.coreLoads.length; i++)
-                    _MiniBar(
-                      label: 'Core $i',
-                      percent: node.coreLoads[i],
-                      color: SysDashColors.forUsage(node.coreLoads[i]) == SysDashColors.statusEmerald
-                          ? SysDashColors.cpuCyan
-                          : SysDashColors.forUsage(node.coreLoads[i]),
-                    ),
-                ],
-              ),
+              if (node.coreLoads.isNotEmpty)
+                ResponsiveGrid(
+                  minItemWidth: 140,
+                  maxColumns: 4,
+                  spacing: 12,
+                  children: [
+                    for (var i = 0; i < node.coreLoads.length; i++)
+                      _MiniBar(
+                        label: 'Core $i',
+                        percent: node.coreLoads[i],
+                        color: SysDashColors.forUsage(node.coreLoads[i]) == SysDashColors.statusEmerald
+                            ? SysDashColors.cpuCyan
+                            : SysDashColors.forUsage(node.coreLoads[i]),
+                      ),
+                  ],
+                )
+              else
+                SkeletonCoreLoadsGrid(
+                  cores: node.logicalCores > 0 ? node.logicalCores : 4,
+                  accent: SysDashColors.cpuCyan,
+                ),
             ],
           ),
         ),
@@ -1021,19 +1027,22 @@ class DisksTab extends StatelessWidget {
             ('${s.read} / ${s.write}', '${formatMetric(node.value(MetricKey.diskRead), 'MB/s', compact: true)} / ${formatMetric(node.value(MetricKey.diskWrite), 'MB/s', compact: true)}'),
           ],
         ),
-        GlassCard(
-          glowColor: SysDashColors.diskAmber,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SectionHeader(title: s.mountPoints, badge: formatGb(node.diskTotalGb), accent: SysDashColors.diskAmber),
-              for (var i = 0; i < node.mounts.length; i++) ...[
-                if (i > 0) Divider(height: 24, color: Colors.white.withValues(alpha: 0.08)),
-                _MountRow(mount: node.mounts[i]),
+        if (node.mounts.isNotEmpty)
+          GlassCard(
+            glowColor: SysDashColors.diskAmber,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionHeader(title: s.mountPoints, badge: formatGb(node.diskTotalGb), accent: SysDashColors.diskAmber),
+                for (var i = 0; i < node.mounts.length; i++) ...[
+                  if (i > 0) Divider(height: 24, color: Colors.white.withValues(alpha: 0.08)),
+                  _MountRow(mount: node.mounts[i]),
+                ],
               ],
-            ],
-          ),
-        ),
+            ),
+          )
+        else
+          const SkeletonDiskList(count: 3, accent: SysDashColors.diskAmber),
         ResponsiveGrid(
           children: [
             MetricChartCard(
@@ -1148,19 +1157,22 @@ class NetworkTab extends StatelessWidget {
             MetricLine(MetricKey.netTx, s.upload, SysDashColors.netTxTeal),
           ],
         ),
-        GlassCard(
-          glowColor: SysDashColors.netIndigo,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SectionHeader(title: s.interfaces, badge: '${node.interfaces.length}', accent: SysDashColors.netIndigo),
-              for (var i = 0; i < node.interfaces.length; i++) ...[
-                if (i > 0) Divider(height: 24, color: Colors.white.withValues(alpha: 0.08)),
-                _InterfaceRow(nic: node.interfaces[i], strings: s),
+        if (node.interfaces.isNotEmpty)
+          GlassCard(
+            glowColor: SysDashColors.netIndigo,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionHeader(title: s.interfaces, badge: '${node.interfaces.length}', accent: SysDashColors.netIndigo),
+                for (var i = 0; i < node.interfaces.length; i++) ...[
+                  if (i > 0) Divider(height: 24, color: Colors.white.withValues(alpha: 0.08)),
+                  _InterfaceRow(nic: node.interfaces[i], strings: s),
+                ],
               ],
-            ],
-          ),
-        ),
+            ),
+          )
+        else
+          const SkeletonNetworkList(count: 2, accent: SysDashColors.netIndigo),
       ],
     );
   }
@@ -1241,6 +1253,15 @@ class ContainersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = LanguageScope.of(context);
+
+    if (!service.isDockerLoaded) {
+      return TabScroll(
+        children: [
+          ContainersSkeletonTab(strings: s),
+        ],
+      );
+    }
+
     final running = node.containers.where((c) => c.isRunning);
     final totalCpu = running.fold<double>(0, (a, c) => a + c.cpuPercent);
     final totalMem = running.fold<double>(0, (a, c) => a + c.memMb);

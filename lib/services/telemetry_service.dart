@@ -25,12 +25,14 @@ class TelemetryService extends ChangeNotifier {
   bool _isLive = true;
   bool _isConnectedToServer = false;
   bool _isLoaded = false;
+  bool _isDockerLoaded = false;
   bool _isDisposed = false;
   int _processLimit = 15;
 
   bool get isLive => _isLive;
   bool get isConnectedToServer => _isConnectedToServer;
   bool get isLoaded => _isLoaded;
+  bool get isDockerLoaded => _isDockerLoaded;
   int get processLimit => _processLimit;
 
   void setProcessLimit(int limit) {
@@ -60,7 +62,9 @@ class TelemetryService extends ChangeNotifier {
     this.client,
     ServerNode? initialNode,
     bool isLoaded = false,
+    bool? isDockerLoaded,
   })  : _isLoaded = isLoaded || initialNode != null,
+        _isDockerLoaded = isDockerLoaded ?? (initialNode != null || client == null),
         nodes = [initialNode ?? ServerNode.createEmpty(profile)] {
     _initConnection();
   }
@@ -226,11 +230,15 @@ class TelemetryService extends ChangeNotifier {
         }
       } catch (_) {}
 
+      _isDockerLoaded = true;
+
       // 5. Fetch top system & memory processes
       _fetchTopProcesses();
 
       if (!_isDisposed) notifyListeners();
-    } catch (_) {}
+    } catch (_) {
+      _isDockerLoaded = true;
+    }
   }
 
   Future<void> _fetchTopProcesses() async {
@@ -324,9 +332,12 @@ class TelemetryService extends ChangeNotifier {
             ..clear()
             ..addAll(images);
           _updateDockerLiveBuffers(nodes[0]);
+          _isDockerLoaded = true;
           notifyListeners();
         }
-      } catch (_) {}
+      } catch (_) {
+        _isDockerLoaded = true;
+      }
     });
 
     _processPollTimer?.cancel();

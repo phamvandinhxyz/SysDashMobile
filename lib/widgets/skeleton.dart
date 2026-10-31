@@ -173,6 +173,78 @@ class SkeletonCircle extends StatelessWidget {
   }
 }
 
+/// Shimmering skeleton hero card with circular gauge and facts list.
+class SkeletonHeroCard extends StatelessWidget {
+  final Color accent;
+  final int factCount;
+
+  const SkeletonHeroCard({
+    super.key,
+    this.accent = SysDashColors.cpuCyan,
+    this.factCount = 4,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      glowColor: accent,
+      borderRadius: 22,
+      padding: const EdgeInsets.all(20),
+      child: SkeletonShimmer(
+        highlightColor: accent.withValues(alpha: 0.28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: const [
+                Expanded(child: SkeletonLine(width: 140, height: 16)),
+                SizedBox(width: 12),
+                SkeletonBox(width: 50, height: 24, borderRadius: 12),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const SkeletonCircle(size: 80),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      SkeletonLine(width: 110, height: 26, borderRadius: 8),
+                      SizedBox(height: 8),
+                      SkeletonBox(height: 6, borderRadius: 3),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const Divider(color: Colors.white10, height: 1),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 16,
+              runSpacing: 10,
+              children: List.generate(
+                factCount,
+                (i) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    SkeletonLine(width: 52, height: 11),
+                    SizedBox(width: 6),
+                    SkeletonLine(width: 68, height: 11),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Shimmering skeleton card representing an Overview metric tile (CPU, RAM, Disk, Net).
 class SkeletonMetricCard extends StatelessWidget {
   final Color accent;
@@ -195,7 +267,7 @@ class SkeletonMetricCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SkeletonCircle(size: 28),
+                    const SkeletonCircle(size: 28),
                     const SizedBox(width: 10),
                     const SkeletonLine(width: 80, height: 13),
                   ],
@@ -269,7 +341,6 @@ class SkeletonChartCard extends StatelessWidget {
               height: height,
               child: Stack(
                 children: [
-                  // Subtle simulated grid lines
                   Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(
@@ -281,7 +352,6 @@ class SkeletonChartCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Chart wave placeholders
                   Align(
                     alignment: Alignment.bottomCenter,
                     child: Row(
@@ -316,14 +386,15 @@ class SkeletonProcessList extends StatelessWidget {
   const SkeletonProcessList({
     super.key,
     required this.title,
-    this.count = 10,
+    this.count = 5,
     this.accent = SysDashColors.cpuCyan,
   });
 
   @override
   Widget build(BuildContext context) {
-    final displayCount = count.clamp(3, 15);
+    final displayCount = count.clamp(3, 10);
     return GlassCard(
+      glowColor: accent,
       borderRadius: 20,
       padding: const EdgeInsets.all(18),
       child: SkeletonShimmer(
@@ -357,7 +428,7 @@ class SkeletonProcessList extends StatelessWidget {
                     ),
                   ],
                 ),
-                SkeletonBox(width: 70, height: 24, borderRadius: 8),
+                const SkeletonBox(width: 60, height: 22, borderRadius: 8),
               ],
             ),
             const SizedBox(height: 16),
@@ -373,7 +444,7 @@ class SkeletonProcessList extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SkeletonLine(width: 100 + (i % 4) * 25.0, height: 13),
+                        SkeletonLine(width: 100 + (i % 4) * 20.0, height: 13),
                         const SizedBox(height: 4),
                         const SkeletonLine(width: 60, height: 10),
                       ],
@@ -396,40 +467,68 @@ class SkeletonProcessList extends StatelessWidget {
   }
 }
 
-/// Shimmering skeleton card representing Docker containers.
-class SkeletonContainerList extends StatelessWidget {
+/// Shimmering skeleton card representing Disk mounts list in DisksTab.
+class SkeletonDiskList extends StatelessWidget {
   final int count;
-  const SkeletonContainerList({super.key, this.count = 4});
+  final Color accent;
+  const SkeletonDiskList({
+    super.key,
+    this.count = 3,
+    this.accent = SysDashColors.diskAmber,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
+      glowColor: accent,
       borderRadius: 20,
       padding: const EdgeInsets.all(18),
       child: SkeletonShimmer(
-        highlightColor: SysDashColors.netIndigo.withValues(alpha: 0.25),
+        highlightColor: accent.withValues(alpha: 0.25),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (var i = 0; i < count; i++) ...[
-              if (i > 0) const Divider(color: Colors.white10, height: 24),
-              Row(
-                children: [
-                  const SkeletonCircle(size: 10),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SkeletonLine(width: 120 + (i % 3) * 30.0, height: 14),
-                        const SizedBox(height: 6),
-                        const SkeletonLine(width: 180, height: 10),
-                      ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    const SkeletonLine(width: 100, height: 14),
+                  ],
+                ),
+                const SkeletonBox(width: 60, height: 22, borderRadius: 8),
+              ],
+            ),
+            const SizedBox(height: 18),
+            for (var i = 0; i < count; i++) ...[
+              if (i > 0) const Divider(height: 24, color: Colors.white10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const SkeletonBox(width: 18, height: 18, borderRadius: 4),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: SkeletonLine(width: 90, height: 13),
+                      ),
+                      const SkeletonLine(width: 38, height: 13),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  const SkeletonBox(width: 64, height: 26, borderRadius: 8),
+                  const SizedBox(height: 8),
+                  const SkeletonBox(height: 7, borderRadius: 4),
+                  const SizedBox(height: 6),
+                  SkeletonLine(width: 160 + (i % 2) * 40.0, height: 11),
                 ],
               ),
             ],
@@ -440,12 +539,547 @@ class SkeletonContainerList extends StatelessWidget {
   }
 }
 
-/// Comprehensive Cyberpunk dashboard skeleton layout for initial load and smooth transitions.
-class DashboardSkeletonView extends StatelessWidget {
+/// Shimmering skeleton card representing Network interfaces in NetworkTab.
+class SkeletonNetworkList extends StatelessWidget {
+  final int count;
+  final Color accent;
+  const SkeletonNetworkList({
+    super.key,
+    this.count = 2,
+    this.accent = SysDashColors.netIndigo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      glowColor: accent,
+      borderRadius: 20,
+      padding: const EdgeInsets.all(18),
+      child: SkeletonShimmer(
+        highlightColor: accent.withValues(alpha: 0.25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const SkeletonLine(width: 110, height: 14),
+                  ],
+                ),
+                const SkeletonBox(width: 32, height: 20, borderRadius: 8),
+              ],
+            ),
+            const SizedBox(height: 18),
+            for (var i = 0; i < count; i++) ...[
+              if (i > 0) const Divider(height: 24, color: Colors.white10),
+              Row(
+                children: [
+                  const SkeletonCircle(size: 36),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SkeletonLine(width: 90 + (i % 2) * 30.0, height: 14),
+                        const SizedBox(height: 6),
+                        const SkeletonLine(width: 150, height: 11),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: const [
+                      SkeletonLine(width: 60, height: 12),
+                      SizedBox(height: 4),
+                      SkeletonLine(width: 50, height: 12),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shimmering skeleton card representing Docker containers list.
+class SkeletonContainerList extends StatelessWidget {
+  final int count;
+  final Color accent;
+  const SkeletonContainerList({
+    super.key,
+    this.count = 3,
+    this.accent = SysDashColors.netIndigo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      glowColor: accent,
+      borderRadius: 20,
+      padding: const EdgeInsets.all(18),
+      child: SkeletonShimmer(
+        highlightColor: accent.withValues(alpha: 0.25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const SkeletonLine(width: 120, height: 14),
+                  ],
+                ),
+                const SkeletonBox(width: 32, height: 20, borderRadius: 8),
+              ],
+            ),
+            const SizedBox(height: 18),
+            for (var i = 0; i < count; i++) ...[
+              if (i > 0) const Divider(color: Colors.white10, height: 24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const SkeletonCircle(size: 36),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SkeletonLine(width: 100 + (i % 3) * 30.0, height: 14),
+                            const SizedBox(height: 5),
+                            const SkeletonLine(width: 140, height: 11),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const SkeletonBox(width: 58, height: 22, borderRadius: 11),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: const [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SkeletonLine(width: 40, height: 10),
+                            SizedBox(height: 4),
+                            SkeletonBox(height: 5, borderRadius: 3),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SkeletonLine(width: 60, height: 10),
+                            SizedBox(height: 4),
+                            SkeletonBox(height: 5, borderRadius: 3),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SkeletonLine(width: 180 + (i % 2) * 20.0, height: 10),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shimmering skeleton card representing Docker images in ContainersTab.
+class SkeletonDockerImageList extends StatelessWidget {
+  final int count;
+  final Color accent;
+  const SkeletonDockerImageList({
+    super.key,
+    this.count = 2,
+    this.accent = SysDashColors.diskAmber,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      glowColor: accent,
+      borderRadius: 20,
+      padding: const EdgeInsets.all(18),
+      child: SkeletonShimmer(
+        highlightColor: accent.withValues(alpha: 0.25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const SkeletonLine(width: 100, height: 14),
+                  ],
+                ),
+                const SkeletonBox(width: 32, height: 20, borderRadius: 8),
+              ],
+            ),
+            const SizedBox(height: 18),
+            for (var i = 0; i < count; i++) ...[
+              if (i > 0) const Divider(height: 24, color: Colors.white10),
+              Row(
+                children: [
+                  const SkeletonCircle(size: 36),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SkeletonLine(width: 110 + (i % 2) * 40.0, height: 14),
+                        const SizedBox(height: 6),
+                        const SkeletonLine(width: 170, height: 11),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const SkeletonBox(width: 58, height: 24, borderRadius: 12),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shimmering skeleton card representing per-core CPU loads in CpuTab.
+class SkeletonCoreLoadsGrid extends StatelessWidget {
+  final int cores;
+  final Color accent;
+  const SkeletonCoreLoadsGrid({
+    super.key,
+    this.cores = 8,
+    this.accent = SysDashColors.cpuCyan,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      glowColor: accent,
+      borderRadius: 20,
+      padding: const EdgeInsets.all(18),
+      child: SkeletonShimmer(
+        highlightColor: accent.withValues(alpha: 0.25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const SkeletonLine(width: 100, height: 14),
+                  ],
+                ),
+                const SkeletonLine(width: 100, height: 12),
+              ],
+            ),
+            const SizedBox(height: 18),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cols = constraints.maxWidth > 500 ? 4 : 2;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 3.2,
+                  ),
+                  itemCount: cores,
+                  itemBuilder: (context, i) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: const [
+                          SkeletonLine(width: 44, height: 10),
+                          SkeletonLine(width: 24, height: 10),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const SkeletonBox(height: 5, borderRadius: 3),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Complete Full-Tab Skeletons for All 6 Tabs
+// =============================================================================
+
+/// 1. Overview Skeleton Tab
+class OverviewSkeletonTab extends StatelessWidget {
+  final AppStrings strings;
+  const OverviewSkeletonTab({super.key, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SkeletonHeroCard(accent: SysDashColors.statusEmerald, factCount: 4),
+        const SizedBox(height: 16),
+        Row(
+          children: const [
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.statusEmerald)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.cpuCyan)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: const [
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.diskAmber)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const SkeletonChartCard(accent: SysDashColors.cpuCyan, height: 140),
+        const SizedBox(height: 16),
+        SkeletonProcessList(
+          title: strings.topProcesses,
+          count: 5,
+          accent: SysDashColors.cpuCyan,
+        ),
+      ],
+    );
+  }
+}
+
+/// 2. CPU Skeleton Tab
+class CpuSkeletonTab extends StatelessWidget {
+  final AppStrings strings;
+  const CpuSkeletonTab({super.key, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SkeletonHeroCard(accent: SysDashColors.cpuCyan, factCount: 5),
+        const SizedBox(height: 16),
+        Row(
+          children: const [
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.cpuCyan)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.statusEmerald)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const SkeletonChartCard(accent: SysDashColors.cpuCyan, height: 150),
+        const SizedBox(height: 16),
+        const SkeletonCoreLoadsGrid(cores: 8, accent: SysDashColors.cpuCyan),
+        const SizedBox(height: 16),
+        SkeletonProcessList(
+          title: strings.topProcesses,
+          count: 5,
+          accent: SysDashColors.cpuCyan,
+        ),
+      ],
+    );
+  }
+}
+
+/// 3. Memory Skeleton Tab
+class MemorySkeletonTab extends StatelessWidget {
+  final AppStrings strings;
+  const MemorySkeletonTab({super.key, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SkeletonHeroCard(accent: SysDashColors.ramViolet, factCount: 4),
+        const SizedBox(height: 16),
+        Row(
+          children: const [
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: const [
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.statusEmerald)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.tempOrange)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const SkeletonChartCard(accent: SysDashColors.ramViolet, height: 150),
+        const SizedBox(height: 16),
+        SkeletonProcessList(
+          title: strings.topMemoryProcesses,
+          count: 5,
+          accent: SysDashColors.ramViolet,
+        ),
+      ],
+    );
+  }
+}
+
+/// 4. Disks Skeleton Tab
+class DisksSkeletonTab extends StatelessWidget {
+  final AppStrings strings;
+  const DisksSkeletonTab({super.key, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        SkeletonHeroCard(accent: SysDashColors.diskAmber, factCount: 4),
+        SizedBox(height: 16),
+        SkeletonDiskList(count: 3, accent: SysDashColors.diskAmber),
+        SizedBox(height: 16),
+        SkeletonChartCard(accent: SysDashColors.diskAmber, height: 150),
+      ],
+    );
+  }
+}
+
+/// 5. Network Skeleton Tab
+class NetworkSkeletonTab extends StatelessWidget {
+  final AppStrings strings;
+  const NetworkSkeletonTab({super.key, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SkeletonHeroCard(accent: SysDashColors.netIndigo, factCount: 4),
+        const SizedBox(height: 16),
+        Row(
+          children: const [
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.netIndigo)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.netTxTeal)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const SkeletonChartCard(accent: SysDashColors.netIndigo, height: 150),
+        const SizedBox(height: 16),
+        const SkeletonNetworkList(count: 2, accent: SysDashColors.netIndigo),
+      ],
+    );
+  }
+}
+
+/// 6. Containers Skeleton Tab
+class ContainersSkeletonTab extends StatelessWidget {
+  final AppStrings strings;
+  const ContainersSkeletonTab({super.key, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        Row(
+          children: [
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.statusEmerald)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.diskAmber)),
+          ],
+        ),
+        SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.cpuCyan)),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonMetricCard(accent: SysDashColors.ramViolet)),
+          ],
+        ),
+        SizedBox(height: 16),
+        SkeletonChartCard(accent: SysDashColors.cpuCyan, height: 160),
+        SizedBox(height: 16),
+        SkeletonChartCard(accent: SysDashColors.ramViolet, height: 160),
+        SizedBox(height: 16),
+        SkeletonContainerList(count: 3, accent: SysDashColors.netIndigo),
+        SizedBox(height: 16),
+        SkeletonDockerImageList(count: 2, accent: SysDashColors.diskAmber),
+      ],
+    );
+  }
+}
+
+/// Comprehensive Cyberpunk dashboard skeleton layout supporting all 6 tabs for initial load and smooth transitions.
+class DashboardSkeletonView extends StatefulWidget {
   final AppStrings strings;
   final ServerProfile profile;
   final bool isConnected;
   final VoidCallback? onLogout;
+  final int initialTab;
 
   const DashboardSkeletonView({
     super.key,
@@ -453,10 +1087,45 @@ class DashboardSkeletonView extends StatelessWidget {
     required this.profile,
     required this.isConnected,
     this.onLogout,
+    this.initialTab = 0,
   });
 
   @override
+  State<DashboardSkeletonView> createState() => _DashboardSkeletonViewState();
+}
+
+class _DashboardSkeletonViewState extends State<DashboardSkeletonView> {
+  late int _selectedTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTab = widget.initialTab.clamp(0, 5);
+  }
+
+  Widget _buildTabBody() {
+    return switch (_selectedTab) {
+      1 => CpuSkeletonTab(strings: widget.strings),
+      2 => MemorySkeletonTab(strings: widget.strings),
+      3 => DisksSkeletonTab(strings: widget.strings),
+      4 => NetworkSkeletonTab(strings: widget.strings),
+      5 => ContainersSkeletonTab(strings: widget.strings),
+      _ => OverviewSkeletonTab(strings: widget.strings),
+    };
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final s = widget.strings;
+    final tabLabels = [
+      (s.tabOverview, SysDashColors.statusEmerald),
+      ('CPU', SysDashColors.cpuCyan),
+      (s.tabMemory, SysDashColors.ramViolet),
+      (s.tabDisks, SysDashColors.diskAmber),
+      (s.tabNetwork, SysDashColors.netIndigo),
+      ('Docker', SysDashColors.netIndigo),
+    ];
+
     return Scaffold(
       backgroundColor: SysDashColors.bgPrimary,
       body: Stack(
@@ -506,14 +1175,14 @@ class DashboardSkeletonView extends StatelessWidget {
                                   height: 8,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: isConnected
+                                    color: widget.isConnected
                                         ? SysDashColors.statusEmerald
                                         : SysDashColors.diskAmber,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  profile.displayName,
+                                  widget.profile.displayName,
                                   style: const TextStyle(
                                     color: SysDashColors.textPrimary,
                                     fontSize: 12,
@@ -523,10 +1192,10 @@ class DashboardSkeletonView extends StatelessWidget {
                               ],
                             ),
                           ),
-                          if (onLogout != null) ...[
+                          if (widget.onLogout != null) ...[
                             const SizedBox(width: 8),
                             InkWell(
-                              onTap: onLogout,
+                              onTap: widget.onLogout,
                               borderRadius: BorderRadius.circular(14),
                               child: Container(
                                 padding: const EdgeInsets.all(6),
@@ -581,7 +1250,7 @@ class DashboardSkeletonView extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        strings.loadingTelemetry,
+                                        s.loadingTelemetry,
                                         style: const TextStyle(
                                           color: SysDashColors.textPrimary,
                                           fontSize: 14,
@@ -590,7 +1259,7 @@ class DashboardSkeletonView extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        strings.waitingForData,
+                                        s.waitingForData,
                                         style: const TextStyle(
                                           color: SysDashColors.textSecondary,
                                           fontSize: 12,
@@ -603,22 +1272,22 @@ class DashboardSkeletonView extends StatelessWidget {
                                   padding:
                                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: (isConnected
+                                    color: (widget.isConnected
                                             ? SysDashColors.statusEmerald
                                             : SysDashColors.diskAmber)
                                         .withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: (isConnected
+                                      color: (widget.isConnected
                                               ? SysDashColors.statusEmerald
                                               : SysDashColors.diskAmber)
                                           .withValues(alpha: 0.3),
                                     ),
                                   ),
                                   child: Text(
-                                    isConnected ? 'WebSocket' : 'Connecting',
+                                    widget.isConnected ? 'WebSocket' : 'Connecting',
                                     style: TextStyle(
-                                      color: isConnected
+                                      color: widget.isConnected
                                           ? SysDashColors.statusEmerald
                                           : SysDashColors.diskAmber,
                                       fontSize: 11,
@@ -629,44 +1298,53 @@ class DashboardSkeletonView extends StatelessWidget {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 14),
+                          // Horizontal Tab Selector Pills
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: List.generate(tabLabels.length, (i) {
+                                final isSel = _selectedTab == i;
+                                final item = tabLabels[i];
+                                return Padding(
+                                  padding: EdgeInsets.only(right: i < tabLabels.length - 1 ? 8 : 0),
+                                  child: InkWell(
+                                    onTap: () => setState(() => _selectedTab = i),
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isSel
+                                            ? item.$2.withValues(alpha: 0.2)
+                                            : Colors.white.withValues(alpha: 0.04),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: isSel
+                                              ? item.$2.withValues(alpha: 0.6)
+                                              : SysDashColors.glassBorderSubtle,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        item.$1,
+                                        style: TextStyle(
+                                          color: isSel ? item.$2 : SysDashColors.textSecondary,
+                                          fontSize: 12,
+                                          fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
                           const SizedBox(height: 16),
-                          // 4 Metric Card Skeletons (Grid)
-                          Row(
-                            children: const [
-                              Expanded(
-                                child: SkeletonMetricCard(accent: SysDashColors.statusEmerald),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: SkeletonMetricCard(accent: SysDashColors.cpuCyan),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: const [
-                              Expanded(
-                                child: SkeletonMetricCard(accent: SysDashColors.ramViolet),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: SkeletonMetricCard(accent: SysDashColors.diskAmber),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          // Hero Chart Skeleton
-                          const SkeletonChartCard(
-                            accent: SysDashColors.cpuCyan,
-                            height: 140,
-                          ),
-                          const SizedBox(height: 16),
-                          // Processes List Skeleton
-                          SkeletonProcessList(
-                            title: strings.topProcesses,
-                            count: 5,
-                            accent: SysDashColors.cpuCyan,
-                          ),
+                          // Active tab skeleton body
+                          _buildTabBody(),
                         ],
                       );
                     },
