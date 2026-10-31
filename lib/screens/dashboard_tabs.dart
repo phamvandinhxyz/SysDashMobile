@@ -1245,14 +1245,37 @@ class _InterfaceRow extends StatelessWidget {
 // =============================================================================
 // 6. CONTAINERS
 // =============================================================================
-class ContainersTab extends StatelessWidget {
+class ContainersTab extends StatefulWidget {
   final TelemetryService service;
   final ServerNode node;
   const ContainersTab({super.key, required this.service, required this.node});
 
   @override
+  State<ContainersTab> createState() => _ContainersTabState();
+}
+
+class _ContainersTabState extends State<ContainersTab> {
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.service.isDockerLoaded && !widget.service.isFetchingDocker) {
+      widget.service.fetchDockerData();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ContainersTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.service.isDockerLoaded && !widget.service.isFetchingDocker) {
+      widget.service.fetchDockerData();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final s = LanguageScope.of(context);
+    final service = widget.service;
+    final node = widget.node;
 
     if (!service.isDockerLoaded) {
       return TabScroll(
@@ -1308,7 +1331,21 @@ class ContainersTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SectionHeader(title: s.containerList, badge: '${node.containers.length}', accent: SysDashColors.netIndigo),
+              SectionHeader(
+                title: s.containerList,
+                badge: '${node.containers.length}',
+                accent: SysDashColors.netIndigo,
+                trailing: service.isFetchingDocker
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(SysDashColors.netIndigo),
+                        ),
+                      )
+                    : null,
+              ),
               if (node.containers.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1333,6 +1370,16 @@ class ContainersTab extends StatelessWidget {
                 title: s.dockerImages,
                 badge: '${node.dockerImages.length}',
                 accent: SysDashColors.diskAmber,
+                trailing: service.isFetchingDocker
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(SysDashColors.diskAmber),
+                        ),
+                      )
+                    : null,
               ),
               if (node.dockerImages.isEmpty)
                 Padding(

@@ -26,6 +26,7 @@ class TelemetryService extends ChangeNotifier {
   bool _isConnectedToServer = false;
   bool _isLoaded = false;
   bool _isDockerLoaded = false;
+  bool _isFetchingDocker = false;
   bool _isDisposed = false;
   int _processLimit = 15;
 
@@ -33,6 +34,7 @@ class TelemetryService extends ChangeNotifier {
   bool get isConnectedToServer => _isConnectedToServer;
   bool get isLoaded => _isLoaded;
   bool get isDockerLoaded => _isDockerLoaded;
+  bool get isFetchingDocker => _isFetchingDocker;
   int get processLimit => _processLimit;
 
   void setProcessLimit(int limit) {
@@ -209,35 +211,42 @@ class TelemetryService extends ChangeNotifier {
         _handleServerSnapshot(currentMetrics);
       }
 
-      // 3. Fetch Docker containers
-      try {
-        final containers = await client!.getDockerContainers();
-        if (!_isDisposed) {
-          nodes[0].containers
-            ..clear()
-            ..addAll(containers);
-          _updateDockerLiveBuffers(nodes[0]);
-        }
-      } catch (_) {}
-
-      // 4. Fetch Docker images
-      try {
-        final images = await client!.getDockerImages();
-        if (!_isDisposed) {
-          nodes[0].dockerImages
-            ..clear()
-            ..addAll(images);
-        }
-      } catch (_) {}
-
-      _isDockerLoaded = true;
-
-      // 5. Fetch top system & memory processes
+      // 3. Fetch top system & memory processes
       _fetchTopProcesses();
 
       if (!_isDisposed) notifyListeners();
+
+      // 4. Fetch Docker data (Containers & Images) asynchronously in background
+      // without blocking main metrics, CPU, Memory, Disks, and Network tabs
+      fetchDockerData();
     } catch (_) {
       _isDockerLoaded = true;
+    }
+  }
+
+  /// Fetches Docker containers & images in parallel asynchronously.
+  Future<void> fetchDockerData() async {
+    if (client == null || _isDisposed || nodes.isEmpty || _isFetchingDocker) return;
+    _isFetchingDocker = true;
+    try {
+      final results = await Future.wait([
+        client!.getDockerContainers(),
+        client!.getDockerImages(),
+      ]);
+      if (!_isDisposed && nodes.isNotEmpty) {
+        nodes[0].containers
+          ..clear()
+          ..addAll(results[0] as List<ContainerInfo>);
+        nodes[0].dockerImages
+          ..clear()
+          ..addAll(results[1] as List<DockerImageItem>);
+        _updateDockerLiveBuffers(nodes[0]);
+      }
+    } catch (_) {
+    } finally {
+      _isFetchingDocker = false;
+      _isDockerLoaded = true;
+      if (!_isDisposed) notifyListeners();
     }
   }
 
@@ -321,23 +330,7 @@ class TelemetryService extends ChangeNotifier {
     _dockerPollTimer?.cancel();
     _dockerPollTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
       if (_isDisposed || !_isLive || client == null) return;
-      try {
-        final containers = await client!.getDockerContainers();
-        final images = await client!.getDockerImages();
-        if (!_isDisposed && nodes.isNotEmpty) {
-          nodes[0].containers
-            ..clear()
-            ..addAll(containers);
-          nodes[0].dockerImages
-            ..clear()
-            ..addAll(images);
-          _updateDockerLiveBuffers(nodes[0]);
-          _isDockerLoaded = true;
-          notifyListeners();
-        }
-      } catch (_) {
-        _isDockerLoaded = true;
-      }
+      await fetchDockerData();
     });
 
     _processPollTimer?.cancel();
