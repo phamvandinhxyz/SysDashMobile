@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
 import '../widgets/charts.dart';
 import '../widgets/glass.dart';
+import '../widgets/skeleton.dart';
 
 // =============================================================================
 // Shared layout helpers
@@ -657,6 +658,12 @@ class CpuTab extends StatelessWidget {
                 ),
               );
             },
+          )
+        else
+          SkeletonProcessList(
+            title: s.topProcesses,
+            count: service.processLimit,
+            accent: SysDashColors.cpuCyan,
           ),
       ],
     );
@@ -962,6 +969,12 @@ class MemoryTab extends StatelessWidget {
                 ),
               );
             },
+          )
+        else
+          SkeletonProcessList(
+            title: s.topMemoryProcesses,
+            count: service.processLimit,
+            accent: SysDashColors.ramViolet,
           ),
       ],
     );

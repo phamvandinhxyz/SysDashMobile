@@ -13,6 +13,7 @@ import 'widgets/app_icon.dart';
 import 'widgets/glass.dart';
 import 'widgets/glass_nav_bar.dart';
 import 'widgets/language_toggle.dart';
+import 'widgets/skeleton.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -327,131 +328,11 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 
   Widget _buildLoading(BuildContext context, AppStrings s) {
-    final isConnected = widget.service.isConnectedToServer;
-    return Scaffold(
-      backgroundColor: SysDashColors.bgPrimary,
-      body: Stack(
-        children: [
-          const Positioned.fill(child: AmbientBackground()),
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: GlassCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-                  borderRadius: 24,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 76,
-                            height: 76,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3.5,
-                              valueColor: const AlwaysStoppedAnimation<Color>(SysDashColors.cpuCyan),
-                              backgroundColor: SysDashColors.cpuCyan.withValues(alpha: 0.15),
-                            ),
-                          ),
-                          const SysDashAppIcon(size: 40, borderRadius: 10),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        s.loadingTelemetry,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: SysDashColors.textPrimary,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        s.waitingForData,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: SysDashColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: SysDashColors.glassBorderSubtle),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isConnected
-                                    ? SysDashColors.statusEmerald
-                                    : SysDashColors.diskAmber,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: (isConnected
-                                            ? SysDashColors.statusEmerald
-                                            : SysDashColors.diskAmber)
-                                        .withValues(alpha: 0.6),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                '${widget.profile.displayName} (${widget.profile.cleanUrl})',
-                                style: const TextStyle(
-                                  color: SysDashColors.textMuted,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      TextButton.icon(
-                        onPressed: widget.onLogout,
-                        icon: const Icon(Icons.arrow_back_rounded, size: 16, color: SysDashColors.textMuted),
-                        label: Text(
-                          s.logout,
-                          style: const TextStyle(
-                            color: SysDashColors.textMuted,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                          backgroundColor: Colors.white.withValues(alpha: 0.04),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: SysDashColors.glassBorderSubtle),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return DashboardSkeletonView(
+      strings: s,
+      profile: widget.profile,
+      isConnected: widget.service.isConnectedToServer,
+      onLogout: widget.onLogout,
     );
   }
 
