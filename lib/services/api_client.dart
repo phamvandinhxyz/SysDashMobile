@@ -63,12 +63,25 @@ class SysDashApiClient {
     return '$url/api/v1';
   }
 
-  /// Transforms http/https base URL into ws/wss WebSocket URL.
-  String get webSocketUrl {
-    var ws = baseUrl.replaceFirst(RegExp(r'^http://'), 'ws://')
-                    .replaceFirst(RegExp(r'^https://'), 'wss://');
-    return '$ws/ws/metrics?token=$token';
+  /// Transforms http/https base URL into ws/wss WebSocket URL with limit and sorting parameters.
+  String getWebSocketUrl({
+    int limit = 15,
+    String sort = 'cpu',
+    String order = 'desc',
+  }) {
+    final ws = baseUrl.replaceFirst(RegExp(r'^http://'), 'ws://')
+                      .replaceFirst(RegExp(r'^https://'), 'wss://');
+    final query = <String>[
+      if (token.isNotEmpty) 'token=$token',
+      'limit=$limit',
+      'sort=$sort',
+      'order=$order',
+    ].join('&');
+    return '$ws/ws/metrics?$query';
   }
+
+  /// Default WebSocket URL.
+  String get webSocketUrl => getWebSocketUrl();
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
@@ -238,9 +251,15 @@ class SysDashApiClient {
   // 4. WebSocket Streaming
   // ---------------------------------------------------------------------------
 
-  /// Connects to real-time WebSocket stream `/ws/metrics?token=<jwt>`.
-  Future<WebSocket> connectWebSocket() async {
-    return WebSocket.connect(webSocketUrl).timeout(
+  /// Connects to real-time WebSocket stream `/ws/metrics?token=<jwt>&limit=<limit>&sort=<sort>&order=<order>`.
+  Future<WebSocket> connectWebSocket({
+    int limit = 15,
+    String sort = 'cpu',
+    String order = 'desc',
+  }) async {
+    return WebSocket.connect(
+      getWebSocketUrl(limit: limit, sort: sort, order: order),
+    ).timeout(
       const Duration(seconds: 6),
     );
   }

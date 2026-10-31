@@ -19,16 +19,41 @@ class TelemetryService extends ChangeNotifier {
   Timer? _localTimer;
   Timer? _restPollTimer;
   Timer? _dockerPollTimer;
+  Timer? _processPollTimer;
   WebSocket? _ws;
   StreamSubscription? _wsSub;
   bool _isLive = true;
   bool _isConnectedToServer = false;
   bool _isLoaded = false;
   bool _isDisposed = false;
+  int _processLimit = 15;
 
   bool get isLive => _isLive;
   bool get isConnectedToServer => _isConnectedToServer;
   bool get isLoaded => _isLoaded;
+  int get processLimit => _processLimit;
+
+  void setProcessLimit(int limit) {
+    if (_processLimit == limit) return;
+    _processLimit = limit;
+    _fetchTopProcesses();
+    if (_isConnectedToServer && _ws != null) {
+      try {
+        _ws!.add(jsonEncode({'limit': limit}));
+      } catch (_) {
+        _reconnectWebSocketWithLimit();
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> _reconnectWebSocketWithLimit() async {
+    _wsSub?.cancel();
+    _wsSub = null;
+    _ws?.close();
+    _ws = null;
+    await _connectWebSocket();
+  }
 
   TelemetryService({
     required this.profile,
@@ -117,6 +142,7 @@ class TelemetryService extends ChangeNotifier {
     if (client != null && profile.token.isNotEmpty) {
       _fetchInitialServerData();
       _connectWebSocket();
+      _startPeriodicPollers();
     }
   }
 
@@ -200,13 +226,49 @@ class TelemetryService extends ChangeNotifier {
         }
       } catch (_) {}
 
+      // 5. Fetch top system & memory processes
+      _fetchTopProcesses();
+
       if (!_isDisposed) notifyListeners();
     } catch (_) {}
   }
 
-  Future<void> _connectWebSocket() async {
+  Future<void> _fetchTopProcesses() async {
+    if (client == null || _isDisposed) return;
     try {
-      final ws = await client!.connectWebSocket();
+      final results = await Future.wait([
+        client!.getProcesses(sort: 'cpu', order: 'desc', limit: _processLimit),
+        client!.getProcesses(sort: 'memory', order: 'desc', limit: _processLimit),
+      ]);
+      if (_isDisposed || nodes.isEmpty) return;
+      final cpuProcs = results[0];
+      final memProcs = results[1];
+      final node = nodes.first;
+
+      if (cpuProcs.isNotEmpty) {
+        node.topProcesses
+          ..clear()
+          ..addAll(cpuProcs);
+      }
+      if (memProcs.isNotEmpty) {
+        node.topMemoryProcesses
+          ..clear()
+          ..addAll(memProcs);
+      }
+      if (cpuProcs.isNotEmpty || memProcs.isNotEmpty) {
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _connectWebSocket() async {
+    if (client == null) return;
+    try {
+      final ws = await client!.connectWebSocket(
+        limit: _processLimit,
+        sort: 'cpu',
+        order: 'desc',
+      );
       if (_isDisposed) {
         ws.close();
         return;
@@ -245,12 +307,43 @@ class TelemetryService extends ChangeNotifier {
     _startRestPollingTicker();
   }
 
+  void _startPeriodicPollers() {
+    if (_isDisposed || client == null) return;
+
+    _dockerPollTimer?.cancel();
+    _dockerPollTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      if (_isDisposed || !_isLive || client == null) return;
+      try {
+        final containers = await client!.getDockerContainers();
+        final images = await client!.getDockerImages();
+        if (!_isDisposed && nodes.isNotEmpty) {
+          nodes[0].containers
+            ..clear()
+            ..addAll(containers);
+          nodes[0].dockerImages
+            ..clear()
+            ..addAll(images);
+          _updateDockerLiveBuffers(nodes[0]);
+          notifyListeners();
+        }
+      } catch (_) {}
+    });
+
+    _processPollTimer?.cancel();
+    _processPollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (_isDisposed || !_isLive || client == null || nodes.isEmpty) return;
+      if (!_isConnectedToServer ||
+          nodes.first.topProcesses.length < _processLimit ||
+          nodes.first.topMemoryProcesses.length < _processLimit) {
+        await _fetchTopProcesses();
+      }
+    });
+  }
+
   void _startRestPollingTicker() {
     if (_isDisposed || client == null) return;
     _restPollTimer?.cancel();
-    _dockerPollTimer?.cancel();
 
-    // 1. Poll metrics every 2 seconds via REST
     _restPollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
       if (_isDisposed || !_isLive) return;
       if (_isConnectedToServer) {
@@ -265,26 +358,8 @@ class TelemetryService extends ChangeNotifier {
       } catch (_) {}
     });
 
-    // 2. Poll Docker every 10 seconds
-    _dockerPollTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      if (_isDisposed || !_isLive) return;
-      try {
-        final containers = await client!.getDockerContainers();
-        final images = await client!.getDockerImages();
-        if (!_isDisposed) {
-          nodes[0].containers
-            ..clear()
-            ..addAll(containers);
-          nodes[0].dockerImages
-            ..clear()
-            ..addAll(images);
-          _updateDockerLiveBuffers(nodes[0]);
-          notifyListeners();
-        }
-      } catch (_) {}
-    });
+    _startPeriodicPollers();
 
-    // 3. Retry WebSocket connection after 8 seconds
     Timer(const Duration(seconds: 8), () {
       if (!_isDisposed && !_isConnectedToServer) {
         _connectWebSocket();
@@ -462,9 +537,21 @@ class TelemetryService extends ChangeNotifier {
       final procs = topProc
           .map((e) => SystemProcessItem.fromJson(e as Map<String, dynamic>))
           .toList();
-      primaryNode.topProcesses
-        ..clear()
-        ..addAll(procs);
+      if (procs.length >= primaryNode.topProcesses.length ||
+          procs.length >= _processLimit ||
+          primaryNode.topProcesses.isEmpty) {
+        primaryNode.topProcesses
+          ..clear()
+          ..addAll(procs);
+      } else {
+        final procMap = {for (final p in procs) p.pid: p};
+        for (var i = 0; i < primaryNode.topProcesses.length; i++) {
+          final curr = primaryNode.topProcesses[i];
+          if (procMap.containsKey(curr.pid)) {
+            primaryNode.topProcesses[i] = procMap[curr.pid]!;
+          }
+        }
+      }
     }
 
     // Update top memory processes
@@ -473,9 +560,21 @@ class TelemetryService extends ChangeNotifier {
       final memProcs = topMemProc
           .map((e) => SystemProcessItem.fromJson(e as Map<String, dynamic>))
           .toList();
-      primaryNode.topMemoryProcesses
-        ..clear()
-        ..addAll(memProcs);
+      if (memProcs.length >= primaryNode.topMemoryProcesses.length ||
+          memProcs.length >= _processLimit ||
+          primaryNode.topMemoryProcesses.isEmpty) {
+        primaryNode.topMemoryProcesses
+          ..clear()
+          ..addAll(memProcs);
+      } else {
+        final memMap = {for (final p in memProcs) p.pid: p};
+        for (var i = 0; i < primaryNode.topMemoryProcesses.length; i++) {
+          final curr = primaryNode.topMemoryProcesses[i];
+          if (memMap.containsKey(curr.pid)) {
+            primaryNode.topMemoryProcesses[i] = memMap[curr.pid]!;
+          }
+        }
+      }
     }
 
     notifyListeners();

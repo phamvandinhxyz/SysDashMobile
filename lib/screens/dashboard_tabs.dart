@@ -123,8 +123,9 @@ class _HeroCard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
+                        Flexible(
                           child: Text(
                             k,
                             maxLines: 1,
@@ -132,12 +133,17 @@ class _HeroCard extends StatelessWidget {
                             style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 12),
                           ),
                         ),
-                        Text(
-                          v,
-                          style: const TextStyle(
-                            color: SysDashColors.textPrimary,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            v,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: SysDashColors.textPrimary,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
@@ -501,20 +507,23 @@ class _MiniBar extends StatelessWidget {
   const _MiniBar({required this.label, required this.percent, required this.color});
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 10, fontWeight: FontWeight.w600)),
-          Text('${percent.round()}%', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
-        ],
-      ),
-      const SizedBox(height: 4),
-      GlassProgressBar(value: percent / 100, color: color, height: 5),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final validPct = percent.isNaN || percent.isInfinite ? 0.0 : percent.clamp(0.0, 100.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(color: SysDashColors.textSecondary, fontSize: 10, fontWeight: FontWeight.w600)),
+            Text('${validPct.round()}%', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        GlassProgressBar(value: validPct / 100, color: color, height: 5),
+      ],
+    );
+  }
 }
 
 // =============================================================================
@@ -621,23 +630,33 @@ class CpuTab extends StatelessWidget {
           ),
         ),
         if (node.topProcesses.isNotEmpty)
-          GlassCard(
-            glowColor: SysDashColors.cpuCyan,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SectionHeader(
-                  title: s.topProcesses,
-                  badge: '${node.topProcesses.length} proc',
-                  accent: SysDashColors.cpuCyan,
+          Builder(
+            builder: (context) {
+              final displayed = node.topProcesses.take(service.processLimit).toList();
+              return GlassCard(
+                glowColor: SysDashColors.cpuCyan,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SectionHeader(
+                      title: s.topProcesses,
+                      badge: '${displayed.length} proc',
+                      accent: SysDashColors.cpuCyan,
+                      trailing: _ProcessLimitSelector(
+                        selected: service.processLimit,
+                        accent: SysDashColors.cpuCyan,
+                        onSelected: service.setProcessLimit,
+                      ),
+                    ),
+                    for (var i = 0; i < displayed.length; i++) ...[
+                      if (i > 0)
+                        Divider(height: 18, color: Colors.white.withValues(alpha: 0.08)),
+                      _ProcessRow(proc: displayed[i]),
+                    ],
+                  ],
                 ),
-                for (var i = 0; i < node.topProcesses.length; i++) ...[
-                  if (i > 0)
-                    Divider(height: 18, color: Colors.white.withValues(alpha: 0.08)),
-                  _ProcessRow(proc: node.topProcesses[i]),
-                ],
-              ],
-            ),
+              );
+            },
           ),
       ],
     );
@@ -715,6 +734,67 @@ class _ProcessRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProcessLimitSelector extends StatelessWidget {
+  final int selected;
+  final ValueChanged<int> onSelected;
+  final Color accent;
+
+  const _ProcessLimitSelector({
+    required this.selected,
+    required this.onSelected,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: SysDashColors.glassBorderSubtle),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [5, 10, 15, 20].map((limit) {
+          final isSel = selected == limit;
+          return Semantics(
+            button: true,
+            selected: isSel,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: () => onSelected(limit),
+                borderRadius: BorderRadius.circular(8),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isSel ? accent.withValues(alpha: 0.25) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSel ? accent.withValues(alpha: 0.8) : Colors.transparent,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '$limit',
+                    style: TextStyle(
+                      color: isSel ? SysDashColors.textPrimary : SysDashColors.textMuted,
+                      fontSize: 11,
+                      fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -852,26 +932,36 @@ class MemoryTab extends StatelessWidget {
           ],
         ),
         if (node.topMemoryProcesses.isNotEmpty)
-          GlassCard(
-            glowColor: SysDashColors.ramViolet,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SectionHeader(
-                  title: s.topMemoryProcesses,
-                  badge: '${node.topMemoryProcesses.length} proc',
-                  accent: SysDashColors.ramViolet,
+          Builder(
+            builder: (context) {
+              final displayed = node.topMemoryProcesses.take(service.processLimit).toList();
+              return GlassCard(
+                glowColor: SysDashColors.ramViolet,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SectionHeader(
+                      title: s.topMemoryProcesses,
+                      badge: '${displayed.length} proc',
+                      accent: SysDashColors.ramViolet,
+                      trailing: _ProcessLimitSelector(
+                        selected: service.processLimit,
+                        accent: SysDashColors.ramViolet,
+                        onSelected: service.setProcessLimit,
+                      ),
+                    ),
+                    for (var i = 0; i < displayed.length; i++) ...[
+                      if (i > 0)
+                        Divider(height: 18, color: Colors.white.withValues(alpha: 0.08)),
+                      _ProcessRow(
+                        proc: displayed[i],
+                        highlightMemory: true,
+                      ),
+                    ],
+                  ],
                 ),
-                for (var i = 0; i < node.topMemoryProcesses.length; i++) ...[
-                  if (i > 0)
-                    Divider(height: 18, color: Colors.white.withValues(alpha: 0.08)),
-                  _ProcessRow(
-                    proc: node.topMemoryProcesses[i],
-                    highlightMemory: true,
-                  ),
-                ],
-              ],
-            ),
+              );
+            },
           ),
       ],
     );

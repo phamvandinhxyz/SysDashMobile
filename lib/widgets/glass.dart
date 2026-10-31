@@ -260,12 +260,14 @@ class SectionHeader extends StatelessWidget {
   final String title;
   final String? badge;
   final Color accent;
+  final Widget? trailing;
 
   const SectionHeader({
     super.key,
     required this.title,
     this.badge,
     this.accent = SysDashColors.cpuCyan,
+    this.trailing,
   });
 
   @override
@@ -298,6 +300,10 @@ class SectionHeader extends StatelessWidget {
         if (badge != null) ...[
           const SizedBox(width: 8),
           Flexible(child: GlassPill(text: badge!, color: accent)),
+        ],
+        if (trailing != null) ...[
+          const SizedBox(width: 8),
+          trailing!,
         ],
       ],
     ),
