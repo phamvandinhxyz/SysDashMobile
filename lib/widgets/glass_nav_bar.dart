@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -47,10 +48,20 @@ class GlassNavBar extends StatefulWidget {
   State<GlassNavBar> createState() => _GlassNavBarState();
 }
 
-class _GlassNavBarState extends State<GlassNavBar> {
+class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStateMixin {
   bool _isDragging = false;
+  bool _isFlinging = false;
   double? _dragFraction;
+  double _dragOffset = 0.0;
   int? _lastHapticIndex;
+
+  Offset _pointerDownPosition = Offset.zero;
+  DateTime _pointerDownTime = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _pointerHasMoved = false;
+  VelocityTracker? _velocityTracker;
+
+  late final AnimationController _flingController;
+  Animation<double>? _flingAnimation;
 
   static const double _barHeight = 66.0;
   static const double _horizontalPadding = 6.0;
@@ -60,6 +71,9 @@ class _GlassNavBarState extends State<GlassNavBar> {
   @override
   void initState() {
     super.initState();
+    _flingController = AnimationController(vsync: this);
+    _flingController.addListener(_onFlingTick);
+    _flingController.addStatusListener(_onFlingStatus);
     widget.pageController?.addListener(_onPageScroll);
   }
 
@@ -74,18 +88,42 @@ class _GlassNavBarState extends State<GlassNavBar> {
 
   @override
   void dispose() {
+    _flingController.dispose();
     widget.pageController?.removeListener(_onPageScroll);
     super.dispose();
   }
 
   void _onPageScroll() {
-    if (!_isDragging && mounted) {
+    if (!_isDragging && !_isFlinging && mounted) {
       setState(() {});
     }
   }
 
+  void _onFlingTick() {
+    if (_isFlinging && _flingAnimation != null && mounted) {
+      final value = _flingAnimation!.value;
+      _checkHapticHover(value);
+      setState(() {
+        _dragFraction = value.clamp(0.0, (widget.items.length - 1).toDouble());
+      });
+    }
+  }
+
+  void _onFlingStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && mounted) {
+      final target = _dragFraction?.round().clamp(0, widget.items.length - 1) ?? widget.currentIndex;
+      _lastHapticIndex = null;
+      HapticFeedback.lightImpact();
+      setState(() {
+        _isFlinging = false;
+        _dragFraction = null;
+      });
+      widget.onTap(target);
+    }
+  }
+
   double _getEffectiveFraction() {
-    if (_isDragging && _dragFraction != null) {
+    if ((_isDragging || _isFlinging) && _dragFraction != null) {
       return _dragFraction!.clamp(0.0, (widget.items.length - 1).toDouble());
     }
     if (widget.pageController != null && widget.pageController!.hasClients) {
@@ -117,72 +155,156 @@ class _GlassNavBarState extends State<GlassNavBar> {
     }
   }
 
-  void _onDragStart(DragStartDetails details, double itemWidth) {
-    final fraction = ((details.localPosition.dx - _horizontalPadding) / itemWidth)
+  void _onPointerDown(PointerDownEvent event, double itemWidth) {
+    _velocityTracker = VelocityTracker.withKind(event.kind);
+    _velocityTracker?.addPosition(event.timeStamp, event.position);
+    _pointerDownPosition = event.localPosition;
+    _pointerDownTime = DateTime.now();
+    _pointerHasMoved = false;
+
+    if (_isFlinging) {
+      _flingController.stop();
+      _isFlinging = false;
+    }
+
+    final currentFraction = _getEffectiveFraction();
+    final touchFraction = ((event.localPosition.dx - _horizontalPadding) / itemWidth)
         .clamp(0.0, (widget.items.length - 1).toDouble());
-    final hoveredIndex = fraction.round().clamp(0, widget.items.length - 1);
-    _lastHapticIndex = hoveredIndex;
-    HapticFeedback.lightImpact();
-    setState(() {
+
+    // Instant zero-delay capsule lock-on: if touching on or near the capsule (within 0.95 tabs),
+    // immediately latch and activate liquid expansion with 0ms delay!
+    if ((touchFraction - currentFraction).abs() < 0.95) {
       _isDragging = true;
-      _dragFraction = fraction;
-    });
+      _dragFraction = currentFraction;
+      _dragOffset = touchFraction - currentFraction;
+      final hoveredIndex = currentFraction.round().clamp(0, widget.items.length - 1);
+      _lastHapticIndex = hoveredIndex;
+      HapticFeedback.lightImpact();
+      setState(() {});
+    } else {
+      _dragOffset = 0.0;
+    }
   }
 
-  void _onDragUpdate(DragUpdateDetails details, double itemWidth) {
-    final fraction = ((details.localPosition.dx - _horizontalPadding) / itemWidth)
+  void _onPointerMove(PointerMoveEvent event, double itemWidth) {
+    _velocityTracker?.addPosition(event.timeStamp, event.position);
+
+    final touchFraction = ((event.localPosition.dx - _horizontalPadding) / itemWidth)
         .clamp(0.0, (widget.items.length - 1).toDouble());
-    _checkHapticHover(fraction);
-    setState(() {
-      _dragFraction = fraction;
-    });
+
+    final moveDist = (event.localPosition - _pointerDownPosition).distance;
+    if (moveDist > 3.0) {
+      _pointerHasMoved = true;
+      if (!_isDragging) {
+        _isDragging = true;
+        _dragOffset = 0.0;
+        final hoveredIndex = touchFraction.round().clamp(0, widget.items.length - 1);
+        _lastHapticIndex = hoveredIndex;
+        HapticFeedback.lightImpact();
+      }
+    }
+
+    if (_isDragging) {
+      final newFraction = (touchFraction - _dragOffset)
+          .clamp(0.0, (widget.items.length - 1).toDouble());
+      _checkHapticHover(newFraction);
+      setState(() {
+        _dragFraction = newFraction;
+      });
+    }
   }
 
-  void _onDragEnd(DragEndDetails details) {
-    if (!_isDragging) return;
-    final current = _dragFraction ?? widget.currentIndex.toDouble();
-    final target = current.round().clamp(0, widget.items.length - 1);
-    _lastHapticIndex = null;
-    HapticFeedback.lightImpact();
+  void _onPointerUp(PointerUpEvent event, double itemWidth) {
+    _velocityTracker?.addPosition(event.timeStamp, event.position);
+    final estimate = _velocityTracker?.getVelocityEstimate();
+    final velocity = estimate?.pixelsPerSecond.dx ?? 0.0;
+    final duration = DateTime.now().difference(_pointerDownTime);
+    final totalDist = (event.localPosition - _pointerDownPosition).distance;
+
+    // Pure tap: lifted without substantial drag or flick
+    if (!_pointerHasMoved && totalDist < 12.0 && duration.inMilliseconds < 350 && velocity.abs() < 180.0) {
+      final tappedIndex = ((event.localPosition.dx - _horizontalPadding) / itemWidth)
+          .round()
+          .clamp(0, widget.items.length - 1);
+      _lastHapticIndex = null;
+      if (_isDragging) {
+        setState(() {
+          _isDragging = false;
+          _dragFraction = null;
+        });
+      }
+      HapticFeedback.selectionClick();
+      widget.onTap(tappedIndex);
+      return;
+    }
+
+    _startFling(velocity, itemWidth);
+  }
+
+  void _onPointerCancel(PointerCancelEvent event, double itemWidth) {
+    if (_isDragging || _isFlinging) {
+      _startFling(0.0, itemWidth);
+    }
+  }
+
+  void _startFling(double velocityPxPerSec, double itemWidth) {
+    if (!_isDragging && !_isFlinging) return;
+    _flingController.stop();
+
+    final currentFraction = _dragFraction ?? widget.currentIndex.toDouble();
+    final maxIndex = (widget.items.length - 1).toDouble();
+
+    // Convert pixel velocity to tabs/second
+    final tabsPerSec = velocityPxPerSec / itemWidth;
+
+    int targetIndex;
+    if (tabsPerSec.abs() > 1.2) {
+      // Significant flick force: project momentum based on release velocity
+      final projected = currentFraction + tabsPerSec * 0.28;
+      targetIndex = projected.round().clamp(0, widget.items.length - 1);
+
+      // Ensure at least 1-step advance in flick direction
+      if (tabsPerSec > 1.2 && targetIndex <= currentFraction.floor()) {
+        targetIndex = (currentFraction.floor() + 1).clamp(0, widget.items.length - 1);
+      } else if (tabsPerSec < -1.2 && targetIndex >= currentFraction.ceil()) {
+        targetIndex = (currentFraction.ceil() - 1).clamp(0, widget.items.length - 1);
+      }
+    } else {
+      // Slow release: snap to nearest tab
+      targetIndex = currentFraction.round().clamp(0, widget.items.length - 1);
+    }
+
+    final distance = (targetIndex - currentFraction).abs();
+
+    if (distance < 0.04) {
+      _lastHapticIndex = null;
+      setState(() {
+        _isDragging = false;
+        _isFlinging = false;
+        _dragFraction = null;
+      });
+      widget.onTap(targetIndex);
+      return;
+    }
+
+    // Dynamic duration based on distance (feels natural, responsive, and physical)
+    final baseDurationMs = (200 + distance * 60).clamp(200.0, 440.0).toInt();
+    _flingController.duration = Duration(milliseconds: baseDurationMs);
+
+    _flingAnimation = Tween<double>(
+      begin: currentFraction.clamp(0.0, maxIndex),
+      end: targetIndex.toDouble().clamp(0.0, maxIndex),
+    ).animate(CurvedAnimation(
+      parent: _flingController,
+      curve: Curves.easeOutCubic,
+    ));
+
     setState(() {
       _isDragging = false;
-      _dragFraction = null;
+      _isFlinging = true;
     });
-    widget.onTap(target);
-  }
 
-  void _onDragCancel() {
-    if (!_isDragging) return;
-    _lastHapticIndex = null;
-    setState(() {
-      _isDragging = false;
-      _dragFraction = null;
-    });
-  }
-
-  void _onLongPressStart(LongPressStartDetails details, double itemWidth) {
-    final fraction = ((details.localPosition.dx - _horizontalPadding) / itemWidth)
-        .clamp(0.0, (widget.items.length - 1).toDouble());
-    final hoveredIndex = fraction.round().clamp(0, widget.items.length - 1);
-    _lastHapticIndex = hoveredIndex;
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _isDragging = true;
-      _dragFraction = fraction;
-    });
-  }
-
-  void _onLongPressMoveUpdate(LongPressMoveUpdateDetails details, double itemWidth) {
-    final fraction = ((details.localPosition.dx - _horizontalPadding) / itemWidth)
-        .clamp(0.0, (widget.items.length - 1).toDouble());
-    _checkHapticHover(fraction);
-    setState(() {
-      _dragFraction = fraction;
-    });
-  }
-
-  void _onLongPressEnd(LongPressEndDetails details) {
-    _onDragEnd(DragEndDetails());
+    _flingController.forward(from: 0.0);
   }
 
   @override
@@ -204,7 +326,7 @@ class _GlassNavBarState extends State<GlassNavBar> {
             // 1. Frosted Glass Chassis (Background, Blur & Rim Border)
             Positioned.fill(
               child: AnimatedContainer(
-                duration: Duration(milliseconds: _isDragging ? 80 : 360),
+                duration: Duration(milliseconds: (_isDragging || _isFlinging) ? 80 : 360),
                 curve: Curves.easeOutCubic,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(_borderRadius),
@@ -219,9 +341,9 @@ class _GlassNavBarState extends State<GlassNavBar> {
                     ),
                     // Dynamic liquid colored aura reacting to active position & drag
                     BoxShadow(
-                      color: activeColor.withValues(alpha: _isDragging ? 0.35 : (isDark ? 0.22 : 0.14)),
-                      blurRadius: _isDragging ? 30 : 20,
-                      spreadRadius: _isDragging ? 0 : -2,
+                      color: activeColor.withValues(alpha: (_isDragging || _isFlinging) ? 0.35 : (isDark ? 0.22 : 0.14)),
+                      blurRadius: (_isDragging || _isFlinging) ? 30 : 20,
+                      spreadRadius: (_isDragging || _isFlinging) ? 0 : -2,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -244,7 +366,7 @@ class _GlassNavBarState extends State<GlassNavBar> {
                             colors: [
                               isDark ? const Color(0xEE0B1222) : const Color(0xF8FFFFFF),
                               isDark ? const Color(0xDD0F172A) : const Color(0xEEF8FAFC),
-                              activeColor.withValues(alpha: _isDragging ? 0.12 : (isDark ? 0.06 : 0.04)),
+                              activeColor.withValues(alpha: (_isDragging || _isFlinging) ? 0.12 : (isDark ? 0.06 : 0.04)),
                             ],
                             stops: const [0.0, 0.65, 1.0],
                           ),
@@ -269,8 +391,8 @@ class _GlassNavBarState extends State<GlassNavBar> {
                     final double itemWidth = totalWidth / widget.items.length;
                     final double pillHeight = constraints.maxHeight;
 
-                    // Elastic liquid deformation when dragging
-                    final double stretch = _isDragging ? 8.0 : 0.0;
+                    // Elastic liquid deformation when dragging or flinging
+                    final double stretch = (_isDragging || _isFlinging) ? 8.0 : 0.0;
                     final double pillWidth = (itemWidth - 4.0 + stretch).clamp(20.0, totalWidth);
                     final double pillLeft = (effectiveFraction * itemWidth + 2.0 - stretch / 2)
                         .clamp(0.0, totalWidth - pillWidth);
@@ -278,25 +400,21 @@ class _GlassNavBarState extends State<GlassNavBar> {
                     final bool isUserScreenSwiping = widget.pageController?.hasClients == true &&
                         widget.pageController!.position.userScrollDirection != ScrollDirection.idle;
 
-                    return GestureDetector(
+                    return Listener(
                       behavior: HitTestBehavior.translucent,
-                      onHorizontalDragStart: (d) => _onDragStart(d, itemWidth),
-                      onHorizontalDragUpdate: (d) => _onDragUpdate(d, itemWidth),
-                      onHorizontalDragEnd: _onDragEnd,
-                      onHorizontalDragCancel: _onDragCancel,
-                      onLongPressStart: (d) => _onLongPressStart(d, itemWidth),
-                      onLongPressMoveUpdate: (d) => _onLongPressMoveUpdate(d, itemWidth),
-                      onLongPressEnd: _onLongPressEnd,
-                      onLongPressCancel: _onDragCancel,
+                      onPointerDown: (e) => _onPointerDown(e, itemWidth),
+                      onPointerMove: (e) => _onPointerMove(e, itemWidth),
+                      onPointerUp: (e) => _onPointerUp(e, itemWidth),
+                      onPointerCancel: (e) => _onPointerCancel(e, itemWidth),
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
                           // Gliding Liquid Droplet Pill Indicator
                           AnimatedPositioned(
                             duration: Duration(
-                              milliseconds: _isDragging ? 40 : (isUserScreenSwiping ? 0 : 280),
+                              milliseconds: (_isDragging || _isFlinging) ? 0 : (isUserScreenSwiping ? 0 : 280),
                             ),
-                            curve: _isDragging || isUserScreenSwiping
+                            curve: _isDragging || _isFlinging || isUserScreenSwiping
                                 ? Curves.linear
                                 : Curves.easeOutCubic,
                             left: pillLeft,
@@ -305,7 +423,7 @@ class _GlassNavBarState extends State<GlassNavBar> {
                             height: pillHeight,
                             child: _LiquidGlidingPill(
                               accent: activeColor,
-                              isDragging: _isDragging,
+                              isDragging: _isDragging || _isFlinging,
                             ),
                           ),
 
@@ -317,12 +435,6 @@ class _GlassNavBarState extends State<GlassNavBar> {
                                   child: _LiquidNavButton(
                                     item: widget.items[i],
                                     selected: i == activeHoverIndex,
-                                    onTap: () {
-                                      if (!_isDragging) {
-                                        HapticFeedback.selectionClick();
-                                        widget.onTap(i);
-                                      }
-                                    },
                                   ),
                                 ),
                             ],
@@ -357,7 +469,7 @@ class _LiquidGlidingPill extends StatelessWidget {
     final isDark = SysDashColors.isDark;
 
     return AnimatedScale(
-      scale: isDragging ? 1.28 : 1.0,
+      scale: isDragging ? 1.4 : 1.0,
       duration: Duration(milliseconds: isDragging ? 180 : 280),
       curve: isDragging ? Curves.easeOutBack : Curves.easeOutCubic,
       child: AnimatedContainer(
@@ -533,12 +645,10 @@ class _LiquidGlassChassisPainter extends CustomPainter {
 class _LiquidNavButton extends StatelessWidget {
   final GlassNavItem item;
   final bool selected;
-  final VoidCallback onTap;
 
   const _LiquidNavButton({
     required this.item,
     required this.selected,
-    required this.onTap,
   });
 
   @override
@@ -550,58 +660,49 @@ class _LiquidNavButton extends StatelessWidget {
       selected: selected,
       label: item.label,
       excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          splashColor: item.accent.withValues(alpha: 0.18),
-          highlightColor: item.accent.withValues(alpha: 0.08),
-          child: SizedBox(
-            height: double.infinity,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedScale(
-                  scale: selected ? 1.14 : 1.0,
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutBack,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    child: Icon(
-                      selected ? item.activeIcon : item.icon,
-                      size: 20,
-                      color: color,
-                      shadows: selected
-                          ? [
-                              Shadow(
-                                color: item.accent.withValues(alpha: 0.8),
-                                blurRadius: 10,
-                              ),
-                            ]
-                          : null,
-                    ),
-                  ),
+      child: SizedBox(
+        height: double.infinity,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedScale(
+              scale: selected ? 1.14 : 1.0,
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutBack,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                child: Icon(
+                  selected ? item.activeIcon : item.icon,
+                  size: 20,
+                  color: color,
+                  shadows: selected
+                      ? [
+                          Shadow(
+                            color: item.accent.withValues(alpha: 0.8),
+                            blurRadius: 10,
+                          ),
+                        ]
+                      : null,
                 ),
-                const SizedBox(height: 3.5),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style: TextStyle(
-                      color: selected
-                          ? SysDashColors.textPrimary
-                          : SysDashColors.textSecondary.withValues(alpha: 0.85),
-                      fontSize: 10.5,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                      letterSpacing: 0.2,
-                    ),
-                    child: Text(item.label, maxLines: 1),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 3.5),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  color: selected
+                      ? SysDashColors.textPrimary
+                      : SysDashColors.textSecondary.withValues(alpha: 0.85),
+                  fontSize: 10.5,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+                child: Text(item.label, maxLines: 1),
+              ),
+            ),
+          ],
         ),
       ),
     );
