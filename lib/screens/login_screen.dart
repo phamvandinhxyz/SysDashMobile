@@ -10,6 +10,7 @@ import '../services/api_client.dart';
 import '../services/secure_credential_store.dart';
 import '../services/telemetry_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/theme_controller.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/glass.dart';
 import '../widgets/language_toggle.dart';
@@ -190,12 +191,13 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final strings = LanguageScope.of(context);
+    ThemeScope.maybeOf(context);
 
     return Scaffold(
       backgroundColor: SysDashColors.bgPrimary,
       body: Stack(
         children: [
-          const Positioned.fill(child: AmbientBackground()),
+          Positioned.fill(child: AmbientBackground()),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(

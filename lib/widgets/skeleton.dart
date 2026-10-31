@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_strings.dart';
 import '../models/server_models.dart';
 import '../theme/app_colors.dart';
+import '../theme/theme_controller.dart';
 import 'app_icon.dart';
 import 'glass.dart';
 
@@ -1126,11 +1127,13 @@ class _DashboardSkeletonViewState extends State<DashboardSkeletonView> {
       ('Docker', SysDashColors.netIndigo),
     ];
 
+    ThemeScope.maybeOf(context);
+
     return Scaffold(
       backgroundColor: SysDashColors.bgPrimary,
       body: Stack(
         children: [
-          const Positioned.fill(child: AmbientBackground()),
+          Positioned.fill(child: AmbientBackground()),
           SafeArea(
             bottom: false,
             child: Column(

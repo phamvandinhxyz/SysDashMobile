@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/theme_controller.dart';
 import 'glass.dart';
 
 class GlassNavItem {
@@ -186,6 +187,7 @@ class _GlassNavBarState extends State<GlassNavBar> {
 
   @override
   Widget build(BuildContext context) {
+    ThemeScope.maybeOf(context);
     final effectiveFraction = _getEffectiveFraction();
     final activeColor = _calculateLiquidColor(effectiveFraction);
     final activeHoverIndex = effectiveFraction.round().clamp(0, widget.items.length - 1);

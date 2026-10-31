@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/theme_controller.dart';
 
 /// Shared blur strength for all glass surfaces (allows BackdropGroup batching).
 final ImageFilter kGlassBlur = ImageFilter.blur(sigmaX: 18, sigmaY: 18);
@@ -29,6 +30,7 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ThemeScope.maybeOf(context);
     final glow = glowColor ?? SysDashColors.cpuCyan;
     final radius = BorderRadius.circular(borderRadius);
     final isDark = SysDashColors.isDark;
@@ -169,6 +171,7 @@ class AmbientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ThemeScope.maybeOf(context);
     final isDark = SysDashColors.isDark;
     return IgnorePointer(
       child: DecoratedBox(
@@ -176,11 +179,17 @@ class AmbientBackground extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              SysDashColors.bgPrimary,
-              SysDashColors.bgSecondary,
-              SysDashColors.bgPrimary,
-            ],
+            colors: isDark
+                ? const [
+                    Color(0xFF070B14),
+                    Color(0xFF0F172A),
+                    Color(0xFF070B14),
+                  ]
+                : const [
+                    Color(0xFFF8FAFD),
+                    Color(0xFFEDF2F7),
+                    Color(0xFFF3F6FA),
+                  ],
           ),
         ),
         child: Stack(
@@ -190,7 +199,9 @@ class AmbientBackground extends StatelessWidget {
               left: -60,
               child: _GlowOrb(
                 280,
-                SysDashColors.cpuCyan.withValues(alpha: isDark ? 0.18 : 0.05),
+                isDark
+                    ? SysDashColors.cpuCyan.withValues(alpha: 0.18)
+                    : const Color(0xFF38BDF8).withValues(alpha: 0.12),
               ),
             ),
             Positioned(
@@ -198,7 +209,9 @@ class AmbientBackground extends StatelessWidget {
               right: -90,
               child: _GlowOrb(
                 320,
-                SysDashColors.ramViolet.withValues(alpha: isDark ? 0.15 : 0.04),
+                isDark
+                    ? SysDashColors.ramViolet.withValues(alpha: 0.15)
+                    : const Color(0xFF818CF8).withValues(alpha: 0.10),
               ),
             ),
             Positioned(
@@ -206,7 +219,9 @@ class AmbientBackground extends StatelessWidget {
               left: 30,
               child: _GlowOrb(
                 280,
-                SysDashColors.statusEmerald.withValues(alpha: isDark ? 0.12 : 0.04),
+                isDark
+                    ? SysDashColors.statusEmerald.withValues(alpha: 0.12)
+                    : const Color(0xFF34D399).withValues(alpha: 0.08),
               ),
             ),
           ],
@@ -227,7 +242,12 @@ class _GlowOrb extends StatelessWidget {
     height: size,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      gradient: RadialGradient(colors: [color, Colors.transparent]),
+      gradient: RadialGradient(
+        colors: [
+          color,
+          color.withValues(alpha: 0),
+        ],
+      ),
     ),
   );
 }

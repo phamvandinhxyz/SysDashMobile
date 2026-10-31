@@ -114,7 +114,7 @@ class _SysDashAppState extends State<SysDashApp> {
             themeMode: _themeController.value,
             theme: ThemeData(
               brightness: Brightness.light,
-              scaffoldBackgroundColor: SysDashColors.bgPrimary,
+              scaffoldBackgroundColor: const Color(0xFFF6F8FC),
               colorScheme: ColorScheme.light(
                 primary: SysDashColors.cpuCyan,
                 secondary: SysDashColors.ramViolet,
@@ -125,11 +125,11 @@ class _SysDashAppState extends State<SysDashApp> {
             ),
             darkTheme: ThemeData(
               brightness: Brightness.dark,
-              scaffoldBackgroundColor: SysDashColors.bgPrimary,
+              scaffoldBackgroundColor: const Color(0xFF070B14),
               colorScheme: ColorScheme.dark(
                 primary: SysDashColors.cpuCyan,
                 secondary: SysDashColors.ramViolet,
-                surface: SysDashColors.bgSecondary,
+                surface: const Color(0xFF0F172A),
               ),
               fontFamily: null,
               useMaterial3: true,
@@ -208,6 +208,7 @@ class _DashboardShellState extends State<DashboardShell> {
   @override
   Widget build(BuildContext context) {
     final s = LanguageScope.of(context);
+    ThemeScope.maybeOf(context);
 
     return AnimatedBuilder(
       animation: widget.service,
@@ -263,7 +264,7 @@ class _DashboardShellState extends State<DashboardShell> {
           backgroundColor: SysDashColors.bgPrimary,
           body: Stack(
             children: [
-              const Positioned.fill(child: AmbientBackground()),
+              Positioned.fill(child: AmbientBackground()),
               SafeArea(
                 bottom: false,
                 child: Column(
