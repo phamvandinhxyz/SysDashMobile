@@ -671,7 +671,7 @@ class _LiquidGlidingPill extends StatelessWidget {
     final isDark = SysDashColors.isDark;
 
     return AnimatedScale(
-      scale: isDragging ? 1.4 : 1.0,
+      scale: isDragging ? 1.25 : 1.0,
       duration: Duration(milliseconds: isDragging ? 180 : 280),
       curve: isDragging ? Curves.easeOutBack : Curves.easeOutCubic,
       child: AnimatedContainer(
@@ -782,7 +782,7 @@ class _LiquidPillBorderPainter extends CustomPainter {
 
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = isDragging ? 1.4 : 1.1
+      ..strokeWidth = isDragging ? 1.25 : 1.1
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
