@@ -54,6 +54,8 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
   double? _dragFraction;
   double _dragOffset = 0.0;
   int? _lastHapticIndex;
+  double? _bounceImpactProgress;
+  bool _hasBounced = false;
 
   Offset _pointerDownPosition = Offset.zero;
   DateTime _pointerDownTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -103,9 +105,19 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
     if (_isFlinging && _flingAnimation != null && mounted) {
       final value = _flingAnimation!.value;
       _checkHapticHover(value);
+      _checkBounceImpact();
       setState(() {
-        _dragFraction = value.clamp(0.0, (widget.items.length - 1).toDouble());
+        _dragFraction = value;
       });
+    }
+  }
+
+  void _checkBounceImpact() {
+    if (_bounceImpactProgress != null && !_hasBounced) {
+      if (_flingController.value >= _bounceImpactProgress!) {
+        _hasBounced = true;
+        HapticFeedback.mediumImpact();
+      }
     }
   }
 
@@ -113,6 +125,8 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
     if (status == AnimationStatus.completed && mounted) {
       final target = _dragFraction?.round().clamp(0, widget.items.length - 1) ?? widget.currentIndex;
       _lastHapticIndex = null;
+      _bounceImpactProgress = null;
+      _hasBounced = false;
       HapticFeedback.lightImpact();
       setState(() {
         _isFlinging = false;
@@ -124,7 +138,8 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
 
   double _getEffectiveFraction() {
     if ((_isDragging || _isFlinging) && _dragFraction != null) {
-      return _dragFraction!.clamp(0.0, (widget.items.length - 1).toDouble());
+      final maxIdx = (widget.items.length - 1).toDouble();
+      return _dragFraction!.clamp(-0.25, maxIdx + 0.25);
     }
     if (widget.pageController != null && widget.pageController!.hasClients) {
       final page = widget.pageController!.page;
@@ -189,8 +204,7 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
   void _onPointerMove(PointerMoveEvent event, double itemWidth) {
     _velocityTracker?.addPosition(event.timeStamp, event.position);
 
-    final touchFraction = ((event.localPosition.dx - _horizontalPadding) / itemWidth)
-        .clamp(0.0, (widget.items.length - 1).toDouble());
+    final touchFraction = (event.localPosition.dx - _horizontalPadding) / itemWidth;
 
     final moveDist = (event.localPosition - _pointerDownPosition).distance;
     if (moveDist > 3.0) {
@@ -205,8 +219,17 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
     }
 
     if (_isDragging) {
-      final newFraction = (touchFraction - _dragOffset)
-          .clamp(0.0, (widget.items.length - 1).toDouble());
+      final rawFraction = touchFraction - _dragOffset;
+      final maxIdx = (widget.items.length - 1).toDouble();
+      // Elastic rubber-band resistance when dragging past boundaries
+      double newFraction;
+      if (rawFraction < 0.0) {
+        newFraction = rawFraction * 0.28;
+      } else if (rawFraction > maxIdx) {
+        newFraction = maxIdx + (rawFraction - maxIdx) * 0.28;
+      } else {
+        newFraction = rawFraction;
+      }
       _checkHapticHover(newFraction);
       setState(() {
         _dragFraction = newFraction;
@@ -257,47 +280,134 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
     // Convert pixel velocity to tabs/second
     final tabsPerSec = velocityPxPerSec / itemWidth;
 
-    int targetIndex;
-    if (tabsPerSec.abs() > 1.2) {
-      // Significant flick force: project momentum based on release velocity
-      final projected = currentFraction + tabsPerSec * 0.28;
-      targetIndex = projected.round().clamp(0, widget.items.length - 1);
+    // Projected destination with smooth, controlled momentum
+    final bool isFlicking = tabsPerSec.abs() > 1.0;
+    final double projectedOffset = tabsPerSec.sign * (tabsPerSec.abs() * 0.22).clamp(0.0, 2.2);
+    final double projected = isFlicking
+        ? currentFraction + projectedOffset
+        : currentFraction.roundToDouble();
 
-      // Ensure at least 1-step advance in flick direction
-      if (tabsPerSec > 1.2 && targetIndex <= currentFraction.floor()) {
-        targetIndex = (currentFraction.floor() + 1).clamp(0, widget.items.length - 1);
-      } else if (tabsPerSec < -1.2 && targetIndex >= currentFraction.ceil()) {
-        targetIndex = (currentFraction.ceil() - 1).clamp(0, widget.items.length - 1);
-      }
+    // Detect collision with the left or right edge boundaries
+    final bool hitsLeftWall = projected < -0.05 || (tabsPerSec < -1.5 && currentFraction <= 0.35);
+    final bool hitsRightWall = projected > maxIndex + 0.05 || (tabsPerSec > 1.5 && currentFraction >= maxIndex - 0.35);
+
+    if (hitsLeftWall) {
+      // Rebound off Left Wall (Index 0.0)
+      final wallOvershoot = projected < 0.0
+          ? (0.0 - projected).clamp(0.12, 2.2)
+          : (tabsPerSec.abs() * 0.18).clamp(0.12, 1.5);
+      final compression = (wallOvershoot * 0.08).clamp(0.05, 0.16);
+      final impactPoint = -compression;
+
+      // Restitution: bounce back into tabs with 48% energy for a gentler, more graceful rebound
+      final rebound = (wallOvershoot * 0.48).clamp(0.2, maxIndex);
+      final targetIndex = (0.0 + rebound).round().clamp(0, widget.items.length - 1);
+
+      final distToWall = (impactPoint - currentFraction).abs().clamp(0.08, maxIndex + 1);
+      final distFromWall = (impactPoint - targetIndex).abs().clamp(0.08, maxIndex + 1);
+      final totalDist = distToWall + distFromWall;
+
+      final weight1 = (distToWall / totalDist).clamp(0.28, 0.62);
+      final weight2 = 1.0 - weight1;
+
+      // Slower, graceful duration (520ms - 820ms)
+      final durationMs = (480 + totalDist * 110).clamp(520.0, 820.0).toInt();
+      _flingController.duration = Duration(milliseconds: durationMs);
+
+      _bounceImpactProgress = weight1;
+      _hasBounced = false;
+
+      _flingAnimation = TweenSequence<double>([
+        TweenSequenceItem<double>(
+          tween: Tween<double>(begin: currentFraction, end: impactPoint)
+              .chain(CurveTween(curve: Curves.easeOutQuad)),
+          weight: weight1,
+        ),
+        TweenSequenceItem<double>(
+          tween: Tween<double>(begin: impactPoint, end: targetIndex.toDouble())
+              .chain(CurveTween(curve: Curves.easeOutQuart)),
+          weight: weight2,
+        ),
+      ]).animate(_flingController);
+    } else if (hitsRightWall) {
+      // Rebound off Right Wall (Index maxIndex)
+      final wallOvershoot = projected > maxIndex
+          ? (projected - maxIndex).clamp(0.12, 2.2)
+          : (tabsPerSec.abs() * 0.18).clamp(0.12, 1.5);
+      final compression = (wallOvershoot * 0.08).clamp(0.05, 0.16);
+      final impactPoint = maxIndex + compression;
+
+      // Restitution: bounce back into tabs with 48% energy
+      final rebound = (wallOvershoot * 0.48).clamp(0.2, maxIndex);
+      final targetIndex = (maxIndex - rebound).round().clamp(0, widget.items.length - 1);
+
+      final distToWall = (impactPoint - currentFraction).abs().clamp(0.08, maxIndex + 1);
+      final distFromWall = (impactPoint - targetIndex).abs().clamp(0.08, maxIndex + 1);
+      final totalDist = distToWall + distFromWall;
+
+      final weight1 = (distToWall / totalDist).clamp(0.28, 0.62);
+      final weight2 = 1.0 - weight1;
+
+      // Slower, graceful duration (520ms - 820ms)
+      final durationMs = (480 + totalDist * 110).clamp(520.0, 820.0).toInt();
+      _flingController.duration = Duration(milliseconds: durationMs);
+
+      _bounceImpactProgress = weight1;
+      _hasBounced = false;
+
+      _flingAnimation = TweenSequence<double>([
+        TweenSequenceItem<double>(
+          tween: Tween<double>(begin: currentFraction, end: impactPoint)
+              .chain(CurveTween(curve: Curves.easeOutQuad)),
+          weight: weight1,
+        ),
+        TweenSequenceItem<double>(
+          tween: Tween<double>(begin: impactPoint, end: targetIndex.toDouble())
+              .chain(CurveTween(curve: Curves.easeOutQuart)),
+          weight: weight2,
+        ),
+      ]).animate(_flingController);
     } else {
-      // Slow release: snap to nearest tab
-      targetIndex = currentFraction.round().clamp(0, widget.items.length - 1);
+      // Decelerating glide without collision
+      int targetIndex;
+      if (isFlicking) {
+        targetIndex = projected.round().clamp(0, widget.items.length - 1);
+        if (tabsPerSec > 1.0 && targetIndex <= currentFraction.floor()) {
+          targetIndex = (currentFraction.floor() + 1).clamp(0, widget.items.length - 1);
+        } else if (tabsPerSec < -1.0 && targetIndex >= currentFraction.ceil()) {
+          targetIndex = (currentFraction.ceil() - 1).clamp(0, widget.items.length - 1);
+        }
+      } else {
+        targetIndex = currentFraction.round().clamp(0, widget.items.length - 1);
+      }
+
+      final distance = (targetIndex - currentFraction).abs();
+
+      if (distance < 0.04) {
+        _lastHapticIndex = null;
+        setState(() {
+          _isDragging = false;
+          _isFlinging = false;
+          _dragFraction = null;
+        });
+        widget.onTap(targetIndex);
+        return;
+      }
+
+      // Slower glide speed: 380ms - 680ms (luxurious fluid feeling)
+      final baseDurationMs = (340 + distance * 95).clamp(380.0, 680.0).toInt();
+      _flingController.duration = Duration(milliseconds: baseDurationMs);
+      _bounceImpactProgress = null;
+      _hasBounced = false;
+
+      _flingAnimation = Tween<double>(
+        begin: currentFraction.clamp(0.0, maxIndex),
+        end: targetIndex.toDouble().clamp(0.0, maxIndex),
+      ).animate(CurvedAnimation(
+        parent: _flingController,
+        curve: Curves.easeOutQuart,
+      ));
     }
-
-    final distance = (targetIndex - currentFraction).abs();
-
-    if (distance < 0.04) {
-      _lastHapticIndex = null;
-      setState(() {
-        _isDragging = false;
-        _isFlinging = false;
-        _dragFraction = null;
-      });
-      widget.onTap(targetIndex);
-      return;
-    }
-
-    // Dynamic duration based on distance (feels natural, responsive, and physical)
-    final baseDurationMs = (200 + distance * 60).clamp(200.0, 440.0).toInt();
-    _flingController.duration = Duration(milliseconds: baseDurationMs);
-
-    _flingAnimation = Tween<double>(
-      begin: currentFraction.clamp(0.0, maxIndex),
-      end: targetIndex.toDouble().clamp(0.0, maxIndex),
-    ).animate(CurvedAnimation(
-      parent: _flingController,
-      curve: Curves.easeOutCubic,
-    ));
 
     setState(() {
       _isDragging = false;
@@ -394,8 +504,9 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
                     // Elastic liquid deformation when dragging or flinging
                     final double stretch = (_isDragging || _isFlinging) ? 8.0 : 0.0;
                     final double pillWidth = (itemWidth - 4.0 + stretch).clamp(20.0, totalWidth);
+                    const double bumperLimit = 6.0;
                     final double pillLeft = (effectiveFraction * itemWidth + 2.0 - stretch / 2)
-                        .clamp(0.0, totalWidth - pillWidth);
+                        .clamp(-bumperLimit, totalWidth - pillWidth + bumperLimit);
 
                     final bool isUserScreenSwiping = widget.pageController?.hasClients == true &&
                         widget.pageController!.position.userScrollDirection != ScrollDirection.idle;
@@ -412,7 +523,7 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
                           // Gliding Liquid Droplet Pill Indicator
                           AnimatedPositioned(
                             duration: Duration(
-                              milliseconds: (_isDragging || _isFlinging) ? 0 : (isUserScreenSwiping ? 0 : 280),
+                              milliseconds: (_isDragging || _isFlinging) ? 0 : (isUserScreenSwiping ? 0 : 340),
                             ),
                             curve: _isDragging || _isFlinging || isUserScreenSwiping
                                 ? Curves.linear
